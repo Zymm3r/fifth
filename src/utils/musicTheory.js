@@ -149,8 +149,11 @@ function getSecondaryDominant(targetRomanNumeral) {
  * @returns {string}
  */
 function getScaleDegreeName(romanNumeral) {
-  const clean = romanNumeral.replace(/[♭b#♯]/, '');
+  const stripped = romanNumeral.replace(/[♭b#♯]/, '');
   const isFlat = romanNumeral.startsWith('♭') || romanNumeral.startsWith('b');
+  // Extract base Roman numeral, stripping quality/extension suffixes (7, maj7, 9, sus, +, etc.)
+  const match = stripped.match(/^(VII|VI|IV|V|I{1,3}|vii|vi|iv|v|i{1,3})/);
+  const clean = match ? match[1] : stripped;
   const names = {
     'I': 'Tonic',
     'i': 'Tonic',
@@ -167,7 +170,11 @@ function getScaleDegreeName(romanNumeral) {
     'VII': 'Leading Tone / Subtonic',
     'vii': 'Leading Tone / Subtonic'
   };
-  const name = names[clean] || '';
+  const name = names[clean];
+  if (!name) {
+    console.debug(`[musicTheory] No scale degree name for Roman numeral: "${romanNumeral}" (cleaned: "${clean}")`);
+    return 'Unknown';
+  }
   return isFlat ? `${name} (♭)` : name;
 }
 

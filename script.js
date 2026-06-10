@@ -62,6 +62,11 @@ document.getElementById("randomBtn").onclick = () => {
 
 // Update Display
 function updateKey(key) {
+  if (!chordsByKey[key]) {
+    console.error(`[script] Invalid key "${key}" — not found in chord database`);
+    return;
+  }
+
   document.getElementById("keyTitle").textContent = `${key} Major`;
   keySelect.value = key;
 
@@ -83,16 +88,24 @@ function updateKey(key) {
 
   // Update Scale
   document.getElementById("scaleText").textContent =
-    `Scale: ${scaleByKey[key]}`;
+    `Scale: ${scaleByKey[key] || 'Unknown'}`;
 
   if (typeof updateExplorerForKey === 'function') {
-    updateExplorerForKey(key);
+    try {
+      updateExplorerForKey(key);
+    } catch (e) {
+      console.error(`[script] Failed to update progression explorer for key "${key}":`, e);
+    }
   }
 }
 
 // Default
-if (typeof initProgressionExplorer === 'function') {
-  initProgressionExplorer("progressionContainer");
+try {
+  if (typeof initProgressionExplorer === 'function') {
+    initProgressionExplorer("progressionContainer");
+  }
+} catch (e) {
+  console.error('[script] Failed to initialize progression explorer:', e);
 }
 updateKey("C");
 
