@@ -10,6 +10,7 @@ import SONG_EXAMPLES from '../data/songExamples.js';
 import { getAllTransposedProgressions, transposeProgression } from '../utils/progressionTransposer.js';
 import { getRelativeKey, getParallelKey, getCircleNeighbors, getChordFunction, getScaleDegreeName, getSecondaryDominant } from '../utils/musicTheory.js';
 import { getBarreChordInfo } from '../data/barreChords.js';
+import { ensureAudioStarted, playChordStrum, stopAllNotes } from '../utils/guitarAudio.js';
 
 /** @type {string|null} Currently focused chord for accessibility */
 let focusedChordId = null;
@@ -1835,5 +1836,62 @@ export function initKeyboardNavigation() {
   });
 }
 
+/**
+ * Resolve a chord name to its fingering array, checking the dict and enharmonic aliases.
+ * Exposed globally so guitarAudio.js can access it.
+ * @param {string} chordName
+ * @returns {string[]|null}
+ */
+function getChordFingering(chordName) {
+  let strings = CHORD_DICT[chordName];
+  if (!strings) {
+    const alias = ENHARMONIC_CHORD_ALIASES[chordName];
+    strings = alias ? CHORD_DICT[alias] : null;
+  }
+  return strings || null;
+}
+
 // Expose chord detail function globally for onclick handlers in rendered HTML
 window.__showChordDetail = showChordDetail;
+
+// Expose chord fingering lookup for guitarAudio.js
+window.__getChordFingering = getChordFingering;
+
+// --- Guitar Audio Hover ---
+
+/** @type {boolean} Whether audio initialization has been attempted */
+let audioInitDone = false;
+
+/**
+ * Initialize audio on first user interaction (required by browser autoplay policy).
+ */
+function onFirstInteraction() {
+  if (audioInitDone) return;
+  audioInitDone = true;
+  ensureAudioStarted();
+}
+
+// Use event delegation on document to handle hover on chord diagrams
+document.addEventListener('mouseenter', (e) => {
+  // Find the closest chord button from the hover target
+  const btn = e.target.closest('.progression-chord-btn');
+  if (!btn) return;
+
+  // Ensure audio context is running
+  onFirstInteraction();
+
+  const chordName = btn.getAttribute('data-chord');
+  if (chordName) {
+    playChordStrum(chordName);
+  }
+}, true);
+
+// Stop notes when mouse leaves the chord button area
+document.addEventListener('mouseleave', (e) => {
+  const btn = e.target.closest('.progression-chord-btn');
+  if (!btn) return;
+  // Let notes ring out naturally (no abrupt stop)
+}, true);
+
+// Also ensure audio context on first click anywhere
+document.addEventListener('click', onFirstInteraction, { once: true });
