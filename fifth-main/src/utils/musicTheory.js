@@ -153,14 +153,14 @@ function getScaleDegreeName(romanNumeral) {
   const clean = romanNumeral.replace(/[♭b#♯]/, '');
   const isFlat = romanNumeral.startsWith('♭') || romanNumeral.startsWith('b');
   const names = {
-    ''I': 'Tonic',
+    'I': 'Tonic',
     'i': 'Tonic',
     'II': 'Supertonic',
     'ii': 'Supertonic',
     'III': 'Mediant',
     'iii': 'Mediant',
     'IV': 'Subdominant',
-    'iv': 'Subdominant,
+    'iv': 'Subdominant',
     'V': 'Dominant',
     'v': 'Dominant',
     'VI': 'Submediant',

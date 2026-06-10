@@ -1,6 +1,7 @@
 /**
  * @fileoverview Chord Progression Transposition Utility
  * Handles converting Roman numeral progressions to actual chords in any key.
+ * Supports complex extensions: maj7, m7, m6, 9, sus, +, dim, bVI, etc.
  * Uses memoization to avoid duplicate calculations.
  */
 
@@ -9,6 +10,7 @@ import PROGRESSIONS from '../data/progressions.js';
 /**
  * Chord quality mapping for Roman numerals in major keys.
  * Roman numerals are case-sensitive: uppercase = major/aug, lowercase = minor/dim.
+ * Stores only the base numeral without quality suffixes.
  */
 const CHORD_QUALITY_MAP = {
   'I': { interval: 0, quality: 'major' },
@@ -36,6 +38,21 @@ const CHROMATIC_FLAT = ['C', 'Db', 'D', 'Eb', 'E', 'F', 'Gb', 'G', 'Ab', 'A', 'B
 const FLAT_KEYS = ['F', 'Bb', 'Eb', 'Ab', 'Db', 'Gb'];
 const SHARP_KEYS = ['G', 'D', 'A', 'E', 'B', 'F#', 'C#'];
 
+/**
+ * Enharmonic equivalents for forcing flat/sharp spellings.
+ * Maps a note to its flat equivalent if it has one.
+ */
+const ENHARMONIC_TO_FLAT = {
+  'C#': 'Db', 'D#': 'Eb', 'F#': 'Gb', 'G#': 'Ab', 'A#': 'Bb'
+};
+
+/**
+ * Enharmonic equivalents for forcing sharp spellings.
+ */
+const ENHARMONIC_TO_SHARP = {
+  'Db': 'C#', 'Eb': 'D#', 'Gb': 'F#', 'Ab': 'G#', 'Bb': 'A#'
+};
+
 /** @type {Map<string, string[]>} Memoization cache for transposed progressions */
 const transpositionCache = new Map();
 
@@ -49,69 +66,162 @@ function getChromaticForKey(key) {
 }
 
 /**
- * Parse a Roman numeral to extract base note interval and any alterations.
- * Supports flat (b, ♭) and sharp (#, ♯) prefixes.
- * @param {string} roman - Roman numeral with possible accidental prefix
- * @returns {{ baseRoman: string, accidentalOffset: number }}
+ * Regex to parse a Roman numeral into three parts:
+ *   1) Accidental prefix: b, #, ♭, ♯ (optional)
+ *   2) Base Roman numeral: I, ii, III, vii, etc.
+ *   3) Quality/extension suffix: maj7, m7, m6, 7, 9, sus, +, dim, °, 6, etc.
+ *
+ * The base Roman numeral pattern matches:
+ *   - Uppercase: I, II, III, IV, V, VI, VII
+ *   - Lowercase: i, ii, iii, iv, v, vi, vii
+ *   - With optional ° variant: vii° (handled separately)
+ */
+const ROMAN_NUMERAL_REGEX = /^([#♯b♭]?)(I{1,3}|IV|V|VI{1,2}|VII?|i{1,3}|iv|v|vi{1,2}|vii)(.*)$/;
+
+/**
+ * Parse a Roman numeral to extract the accidental prefix, base numeral,
+ * and quality/extension suffix.
+ *
+ * @param {string} roman - Roman numeral with possible accidental and suffix
+ * @returns {{ accidentalOffset: number, baseRoman: string, suffix: string, isMinorBase: boolean }}
  */
 function parseRomanNumeral(roman) {
   let accidentalOffset = 0;
   let cleaned = roman;
+  let accidentalPrefix = ''; // '', 'b', '#' — used for enharmonic forcing
 
-  // Check for flat
+  // Check for flat (b, ♭)
   if (roman.startsWith('b') || roman.startsWith('♭')) {
     accidentalOffset = -1;
+    accidentalPrefix = 'b';
     cleaned = roman.slice(1);
   }
-  // Check for sharp
+  // Check for sharp (#, ♯)
   else if (roman.startsWith('#') || roman.startsWith('♯')) {
     accidentalOffset = 1;
+    accidentalPrefix = '#';
     cleaned = roman.slice(1);
   }
 
-  return { baseRoman: cleaned, accidentalOffset };
+  // Handle special case: "vii°" — the ° is part of the base
+  let baseRoman = cleaned;
+  let suffix = '';
+
+  if (cleaned.startsWith('vii°')) {
+    baseRoman = 'vii°';
+    suffix = cleaned.slice(4);
+  } else {
+    // Match the base Roman numeral (I-VII or i-vii) followed by optional suffix
+    const match = cleaned.match(/^(I{1,3}|IV|V|VI{1,2}|VII?|i{1,3}|iv|v|vi{1,2}|vii)(.*)$/);
+    if (match) {
+      baseRoman = match[1];
+      suffix = match[2];
+    }
+  }
+
+  const isMinorBase = /^[a-z]/.test(baseRoman);
+
+  return { accidentalOffset, baseRoman, suffix, isMinorBase, accidentalPrefix };
+}
+
+/**
+ * Apply the quality/extension suffix to a base chord name.
+ * Handles the case where 'm' would be duplicated (e.g. Cm + m7 → Cm7, not Cmm7).
+ *
+ * @param {string} baseChord - e.g. "C", "Dm", "Bdim"
+ * @param {string} suffix - e.g. "7", "9", "maj7", "m7", "m6", "+", "sus", "dim", "°", "6"
+ * @param {boolean} isMinorBase - Whether the Roman base was lowercase (minor)
+ * @returns {string} Complete chord name
+ */
+function applySuffix(baseChord, suffix, isMinorBase) {
+  if (!suffix) return baseChord;
+
+  // Map special suffix symbols
+  let normalizedSuffix = suffix;
+  if (suffix === '°') normalizedSuffix = 'dim';
+
+  // If the base chord already ends with 'm' (minor) and the suffix starts with 'm',
+  // strip the leading 'm' from suffix to avoid duplication: Cm + m7 → Cm7
+  const baseEndsWithM = baseChord.endsWith('m') || baseChord.endsWith('dim');
+  const suffixStartsWithM = normalizedSuffix.startsWith('m');
+
+  if (baseEndsWithM && suffixStartsWithM && !normalizedSuffix.startsWith('maj')) {
+    // Strip the 'm' from suffix: "m7" → "7", "m6" → "6"
+    normalizedSuffix = normalizedSuffix.slice(1);
+  }
+
+  return baseChord + normalizedSuffix;
 }
 
 /**
  * Transpose a single Roman numeral to an actual chord name in the given key.
- * @param {string} romanNumeral - e.g. "I", "ii", "bVII", "vii°"
+ *
+ * Handles:
+ *   - Basic numerals: I, ii, V, vi, etc.
+ *   - Accidentals: bVII, #IV, ♭VI, etc.
+ *   - Extensions: Imaj7, ii7, V9, vi7, im7, im6, bVImaj7, V+, Isus, etc.
+ *   - Secondary dominants: V/ii, V/V, etc.
+ *
+ * @param {string} romanNumeral - e.g. "I", "ii", "bVII", "Imaj7", "ii7", "V9"
  * @param {string} key - Target key e.g. "C", "G", "F"
- * @returns {string} Chord name e.g. "C", "Dm", "G7"
+ * @returns {string} Chord name e.g. "C", "Dm", "G7", "Cmaj7", "Ebmaj7"
  */
 function transposeRomanNumeral(romanNumeral, key) {
   // Handle secondary dominants (e.g., V/ii)
   if (romanNumeral.includes('/')) {
-    const [primary, secondary] = romanNumeral.split('/');
-    const secondaryChord = transposeRomanNumeral(secondary, key);
-    // For simplicity, just transpose the primary part
+    const [primary] = romanNumeral.split('/');
+    // Transpose the primary part using the key (this is a simplification)
     return transposeRomanNumeral(primary, key);
   }
 
-  const { baseRoman, accidentalOffset } = parseRomanNumeral(romanNumeral);
+  const { accidentalOffset, baseRoman, suffix, isMinorBase, accidentalPrefix } = parseRomanNumeral(romanNumeral);
+
+  // Look up the base Roman numeral in the quality map
   const chordInfo = CHORD_QUALITY_MAP[baseRoman];
 
-  if (!chordInfo) return romanNumeral; // Return as-is if unknown
+  if (!chordInfo) {
+    // If completely unrecognized, return as-is
+    return romanNumeral;
+  }
 
   const chromatic = getChromaticForKey(key);
   const keyIndex = chromatic.indexOf(key);
   if (keyIndex === -1) return romanNumeral;
 
+  // Compute the root note index: key root + interval + accidental offset
   const noteIndex = (keyIndex + chordInfo.interval + accidentalOffset + 12) % 12;
-  const rootNote = chromatic[noteIndex];
+  let rootNote = chromatic[noteIndex];
 
-  // Format the chord name based on quality
+  // Force enharmonic spelling based on accidental prefix
+  // If the Roman numeral had 'b' prefix, force flat spelling
+  if (accidentalPrefix === 'b' && ENHARMONIC_TO_FLAT[rootNote]) {
+    rootNote = ENHARMONIC_TO_FLAT[rootNote];
+  }
+  // If the Roman numeral had '#' prefix and key uses sharps, force sharp spelling
+  else if (accidentalPrefix === '#' && ENHARMONIC_TO_SHARP[rootNote]) {
+    rootNote = ENHARMONIC_TO_SHARP[rootNote];
+  }
+
+  // Build the base chord name from quality
+  let baseChord;
   switch (chordInfo.quality) {
     case 'major':
-      return rootNote;
+      baseChord = rootNote;
+      break;
     case 'minor':
-      return `${rootNote}m`;
+      baseChord = `${rootNote}m`;
+      break;
     case 'dim':
-      return `${rootNote}dim`;
-    case 'aug':
-      return `${rootNote}aug`;
+      baseChord = `${rootNote}dim`;
+      break;
     default:
-      return rootNote;
+      baseChord = rootNote;
   }
+
+  // Apply the quality/extension suffix (maj7, 7, 9, m7, m6, +, sus, dim, etc.)
+  const chordName = applySuffix(baseChord, suffix, isMinorBase);
+
+  return chordName;
 }
 
 /**
@@ -123,7 +233,7 @@ function transposeRomanNumeral(romanNumeral, key) {
  */
 function transposeProgression(progressionId, key) {
   const cacheKey = `${progressionId}|${key}`;
-  
+
   if (transpositionCache.has(cacheKey)) {
     return transpositionCache.get(cacheKey);
   }
@@ -138,7 +248,7 @@ function transposeProgression(progressionId, key) {
 
   const result = { chords, romanNumerals };
   transpositionCache.set(cacheKey, result);
-  
+
   return result;
 }
 

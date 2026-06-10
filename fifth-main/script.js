@@ -76,10 +76,9 @@ function updateKey(key) {
   const chordList = document.getElementById("chordList");
   chordList.innerHTML = "";
   chords.forEach((c, i) => {
-    const roman = ["I", "ii", "iii", "IV", "V", "vi", "vii°"][i];
     const div = document.createElement("div");
     div.className = "chord";
-    div.innerHTML = `<b>${c}</b><br><small>${roman}</small>`;
+    div.innerHTML = `<b>${c}</b>`;
     chordList.appendChild(div);
   });
 

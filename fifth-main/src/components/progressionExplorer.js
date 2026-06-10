@@ -80,11 +80,10 @@ function renderProgressions(key) {
               data-chord="${chord}" 
               data-roman="${romanNumerals[idx]}"
               data-progression-id="${progression.id}"
-              aria-label="${chord} chord (${romanNumerals[idx]})"
+              aria-label="${chord} chord"
               tabindex="0"
               onclick="window.__showChordDetail('${chord}', '${romanNumerals[idx]}', '${key}')">
         <span class="chord-name">${chord}</span>
-        <span class="chord-roman">${romanNumerals[idx]}</span>
         <span class="chord-svg">${renderChordDiagram(chord)}</span>
       </button>
     `).join('');
