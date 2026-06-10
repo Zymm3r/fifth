@@ -90,10 +90,10 @@ function renderProgressions(key) {
       <button class="progression-chord-btn" 
               data-chord="${escapeAttr(chord)}" 
               data-roman="${escapeAttr(romanNumerals[idx])}"
+              data-key="${escapeAttr(key)}"
               data-progression-id="${escapeAttr(progression.id)}"
               aria-label="${escapeAttr(chord)} chord"
-              tabindex="0"
-              onclick="window.__showChordDetail('${escapeAttr(chord)}', '${escapeAttr(romanNumerals[idx])}', '${escapeAttr(key)}')">
+              tabindex="0">
         <span class="chord-name">${escapeAttr(chord)}</span>
         <span class="chord-svg">${renderChordDiagram(chord)}</span>
       </button>
@@ -282,8 +282,10 @@ export function showChordDetail(chordName, romanNumeral, key) {
         <h4>Related Chords</h4>
         <div class="chord-detail__related-list">
           ${relatedChords.map(c => `
-            <button class="related-chord-btn" 
-                    onclick="window.__showChordDetail('${escapeAttr(c)}', '${escapeAttr(romanNumeral)}', '${escapeAttr(key)}')"
+            <button class="related-chord-btn"
+                    data-chord="${escapeAttr(c)}"
+                    data-roman="${escapeAttr(romanNumeral)}"
+                    data-key="${escapeAttr(key)}"
                     aria-label="Show details for ${escapeAttr(c)}">
               ${escapeAttr(c)}
             </button>
@@ -302,26 +304,15 @@ export function showChordDetail(chordName, romanNumeral, key) {
     if (closeBtn) closeBtn.focus();
   }, 100);
 
-  // Trap focus in modal
+  // Close handlers (use named functions to avoid listener leaks)
   modalOverlay.addEventListener('keydown', trapModalFocus);
+  modalOverlay.addEventListener('click', handleOverlayClick);
+  document.addEventListener('keydown', handleModalEscape);
 
-  // Close handlers
   const closeBtn = document.getElementById('chordModalClose');
   if (closeBtn) {
     closeBtn.onclick = () => closeChordModal();
-    closeBtn.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' || e.key === ' ') {
-        e.preventDefault();
-        closeChordModal();
-      }
-    });
   }
-
-  modalOverlay.addEventListener('click', (e) => {
-    if (e.target === modalOverlay) closeChordModal();
-  });
-
-  document.addEventListener('keydown', handleModalEscape);
 }
 
 /**
@@ -332,8 +323,18 @@ function closeChordModal() {
   if (modalOverlay) {
     modalOverlay.hidden = true;
     modalOverlay.classList.remove('chord-modal__overlay--visible');
+    modalOverlay.removeEventListener('keydown', trapModalFocus);
+    modalOverlay.removeEventListener('click', handleOverlayClick);
   }
   document.removeEventListener('keydown', handleModalEscape);
+}
+
+/**
+ * Handle click on modal overlay background to close.
+ * @param {MouseEvent} e
+ */
+function handleOverlayClick(e) {
+  if (e.target === document.getElementById('chordModalOverlay')) closeChordModal();
 }
 
 /**
@@ -1861,11 +1862,20 @@ function getChordFingering(chordName) {
   return strings || null;
 }
 
-// Expose chord detail function globally for onclick handlers in rendered HTML
-window.__showChordDetail = showChordDetail;
-
 // Expose chord fingering lookup for guitarAudio.js
 window.__getChordFingering = getChordFingering;
+
+// Event delegation for chord buttons (avoids inline onclick blocked by CSP)
+document.addEventListener('click', (e) => {
+  const btn = e.target.closest('.progression-chord-btn, .related-chord-btn');
+  if (!btn) return;
+  const chord = btn.getAttribute('data-chord');
+  const roman = btn.getAttribute('data-roman');
+  const key = btn.getAttribute('data-key');
+  if (chord && roman && key) {
+    showChordDetail(chord, roman, key);
+  }
+});
 
 // --- Guitar Audio Hover ---
 
