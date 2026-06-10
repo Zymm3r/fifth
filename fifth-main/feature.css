@@ -1,0 +1,520 @@
+/* Progression Explorer Styles */
+.progression-explorer {
+  margin-top: 2rem;
+  padding: 1rem;
+  max-width: 900px;
+  width: 100%;
+  text-align: left;
+}
+
+.progression-explorer__header {
+  margin-bottom: 1.5rem;
+  text-align: center;
+}
+
+.progression-explorer__title {
+  font-size: 2rem;
+  color: #4a2f0f;
+  margin-bottom: 0.5rem;
+}
+
+.progression-explorer__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.progression-card {
+  background-color: #fdf4e2;
+  border: 1px solid #e2c896;
+  border-radius: 12px;
+  padding: 1rem;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+  transition: transform 0.2s;
+}
+
+.progression-card:hover {
+  transform: translateY(-2px);
+}
+
+.progression-card__header {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.progression-card__name {
+  margin: 0;
+  font-size: 1.2rem;
+  color: #4a2f0f;
+  flex-grow: 1;
+}
+
+.progression-card__badge {
+  font-size: 0.75rem;
+  padding: 0.2rem 0.5rem;
+  border-radius: 12px;
+  background-color: #e2c896;
+  color: #4a2f0f;
+  font-weight: bold;
+}
+
+.progression-card__pattern {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.progression-chord-btn {
+  background-color: #fff8ec;
+  border: 1px solid #d8b86e;
+  border-radius: 8px;
+  padding: 0.5rem 0.8rem;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  transition: background-color 0.2s;
+}
+
+.progression-chord-btn:hover {
+  background-color: #f5d7a0;
+}
+
+.chord-name {
+  font-weight: bold;
+  font-size: 1.1rem;
+}
+
+.chord-roman {
+  font-size: 0.8rem;
+  color: #666;
+}
+
+.chord-svg {
+  width: 60px;
+  height: 60px;
+  display: block;
+  margin-top: 0.25rem;
+}
+
+.chord-svg svg {
+  width: 100%;
+  height: auto;
+}
+
+.progression-card__desc {
+  font-size: 0.9rem;
+  color: #555;
+  margin-bottom: 1rem;
+  line-height: 1.4;
+}
+
+.song-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  font-size: 0.85rem;
+}
+
+.song-example {
+  padding: 0.3rem 0;
+  border-bottom: 1px solid #f0e6d2;
+}
+
+.song-example:last-child {
+  border-bottom: none;
+}
+
+.song-title {
+  font-weight: bold;
+}
+
+.song-artist {
+  color: #666;
+  font-style: italic;
+}
+
+.theory-helpers {
+  background-color: #fdf4e2;
+  border: 1px solid #e2c896;
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin-top: 2rem;
+}
+
+.theory-helpers__title {
+  margin-top: 0;
+  margin-bottom: 1rem;
+}
+
+.theory-helpers__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 1rem;
+}
+
+.theory-helper-card {
+  background-color: #fff8ec;
+  border: 1px dashed #d8b86e;
+  padding: 1rem;
+  border-radius: 8px;
+  text-align: center;
+}
+
+.theory-helper-card__label {
+  display: block;
+  font-size: 0.8rem;
+  color: #666;
+  margin-bottom: 0.5rem;
+}
+
+.theory-helper-card__value {
+  display: block;
+  font-size: 1.1rem;
+  font-weight: bold;
+  color: #4a2f0f;
+}
+
+/* Modal styles */
+.chord-modal__overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background-color: rgba(0,0,0,0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.chord-modal__overlay[hidden] {
+  display: none;
+}
+
+.chord-modal__content {
+  background-color: #fff8ec;
+  padding: 2rem;
+  border-radius: 12px;
+  max-width: 600px;
+  width: 90%;
+  max-height: 90vh;
+  overflow-y: auto;
+  position: relative;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+}
+
+.chord-modal__close {
+  position: absolute;
+  top: 10px;
+  right: 15px;
+  font-size: 1.5rem;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #888;
+}
+
+.chord-modal__close:hover {
+  color: #333;
+}
+
+.chord-detail__header {
+  display: flex;
+  align-items: baseline;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  border-bottom: 2px solid #e2c896;
+  padding-bottom: 1rem;
+}
+
+.chord-detail__name {
+  font-size: 2.5rem;
+  margin: 0;
+  color: #4a2f0f;
+}
+
+.chord-detail__roman {
+  font-size: 1.5rem;
+  color: #666;
+  font-weight: bold;
+}
+
+.chord-detail__info-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.chord-detail__info-card {
+  background-color: #fdf4e2;
+  padding: 0.8rem;
+  border-radius: 8px;
+  text-align: center;
+  border: 1px solid #e2c896;
+}
+
+.chord-detail__info-label {
+  display: block;
+  font-size: 0.75rem;
+  color: #666;
+  margin-bottom: 0.3rem;
+  text-transform: uppercase;
+}
+
+.chord-detail__info-value {
+  font-weight: bold;
+  color: #4a2f0f;
+}
+
+.note-tag, .interval-tag {
+  display: inline-block;
+  padding: 0.2rem 0.5rem;
+  background-color: #e2c896;
+  border-radius: 4px;
+  margin-right: 0.5rem;
+  font-weight: bold;
+}
+
+.barre-diagram__ascii {
+  background-color: #f4e8d2;
+  padding: 1rem;
+  border-radius: 8px;
+  font-family: monospace;
+  white-space: pre-wrap;
+  line-height: 1.2;
+}
+
+.chord-detail__related-list {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.related-chord-btn {
+  background-color: #fdf4e2;
+  border: 1px solid #d8b86e;
+  padding: 0.5rem 1rem;
+  color: #666;
+}
+
+.progression-card__desc {
+  font-size: 0.9rem;
+  color: #555;
+  margin-bottom: 1rem;
+  line-height: 1.4;
+}
+
+.song-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  font-size: 0.85rem;
+}
+
+.song-example {
+  padding: 0.3rem 0;
+  border-bottom: 1px solid #f0e6d2;
+}
+
+.song-example:last-child {
+  border-bottom: none;
+}
+
+.song-title {
+  font-weight: bold;
+}
+
+.song-artist {
+  color: #666;
+  font-style: italic;
+}
+
+.theory-helpers {
+  background-color: #fdf4e2;
+  border: 1px solid #e2c896;
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin-top: 2rem;
+}
+
+.theory-helpers__title {
+  margin-top: 0;
+  margin-bottom: 1rem;
+}
+
+.theory-helpers__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 1rem;
+}
+
+.theory-helper-card {
+  background-color: #fff8ec;
+  border: 1px dashed #d8b86e;
+  padding: 1rem;
+  border-radius: 8px;
+  text-align: center;
+}
+
+.theory-helper-card__label {
+  display: block;
+  font-size: 0.8rem;
+  color: #666;
+  margin-bottom: 0.5rem;
+}
+
+.theory-helper-card__value {
+  display: block;
+  font-size: 1.1rem;
+  font-weight: bold;
+  color: #4a2f0f;
+}
+
+/* Modal styles */
+.chord-modal__overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background-color: rgba(0,0,0,0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.chord-modal__overlay[hidden] {
+  display: none;
+}
+
+.chord-modal__content {
+  background-color: #fff8ec;
+  padding: 2rem;
+  border-radius: 12px;
+  max-width: 600px;
+  width: 90%;
+  max-height: 90vh;
+  overflow-y: auto;
+  position: relative;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+}
+
+.chord-modal__close {
+  position: absolute;
+  top: 10px;
+  right: 15px;
+  font-size: 1.5rem;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #888;
+}
+
+.chord-modal__close:hover {
+  color: #333;
+}
+
+.chord-detail__header {
+  display: flex;
+  align-items: baseline;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  border-bottom: 2px solid #e2c896;
+  padding-bottom: 1rem;
+}
+
+.chord-detail__name {
+  font-size: 2.5rem;
+  margin: 0;
+  color: #4a2f0f;
+}
+
+.chord-detail__roman {
+  font-size: 1.5rem;
+  color: #666;
+  font-weight: bold;
+}
+
+.chord-detail__info-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.chord-detail__info-card {
+  background-color: #fdf4e2;
+  padding: 0.8rem;
+  border-radius: 8px;
+  text-align: center;
+  border: 1px solid #e2c896;
+}
+
+.chord-detail__info-label {
+  display: block;
+  font-size: 0.75rem;
+  color: #666;
+  margin-bottom: 0.3rem;
+  text-transform: uppercase;
+}
+
+.chord-detail__info-value {
+  font-weight: bold;
+  color: #4a2f0f;
+}
+
+.note-tag, .interval-tag {
+  display: inline-block;
+  padding: 0.2rem 0.5rem;
+  background-color: #e2c896;
+  border-radius: 4px;
+  margin-right: 0.5rem;
+  font-weight: bold;
+}
+
+.barre-diagram__ascii {
+  background-color: #f4e8d2;
+  padding: 1rem;
+  border-radius: 8px;
+  font-family: monospace;
+  white-space: pre-wrap;
+  line-height: 1.2;
+}
+
+.chord-detail__related-list {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.related-chord-btn {
+  background-color: #fdf4e2;
+  border: 1px solid #d8b86e;
+  padding: 0.5rem 1rem;
+  border-radius: 20px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.related-chord-btn:hover {
+  background-color: #f5d7a0;
+}
+
+/* SVG Chord Animations */
+@keyframes popIn {
+  0% { opacity: 0; transform: scale(0.5); transform-origin: center; }
+  70% { transform: scale(1.1); }
+  100% { opacity: 1; transform: scale(1); transform-origin: center; }
+}
+
+.barre-diagram__visual {
+  transition: transform 0.3s ease;
+  padding: 1rem;
+}
+
+.barre-diagram__visual:hover {
+  transform: scale(1.05);
+}

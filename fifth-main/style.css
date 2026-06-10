@@ -1,0 +1,165 @@
+/* ---------------------------
+   พื้นหลังและการจัดตำแหน่งหลัก
+---------------------------- */
+body {
+  background-color: #fff8ec;
+  color: #4a2f0f;
+  font-family: "Georgia", serif;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  min-height: 100vh;
+  margin: 0;
+  text-align: center;
+}
+
+/* ---------------------------
+   หัวข้อและคำอธิบาย
+---------------------------- */
+h1 {
+  font-size: 2.8rem;
+  margin-top: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.subtitle {
+  text-align: center;
+  font-size: 0.95rem;
+  color: #4a2f0f;
+  margin-top: 0.5rem;
+  margin-bottom: 2rem;
+  opacity: 0.8;
+}
+
+/* ---------------------------
+   กล่องควบคุม
+---------------------------- */
+.controls {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+select, button {
+  padding: 8px 14px;
+  border-radius: 8px;
+  border: 1px solid #d8b86e;
+  background-color: #fdf4e2;
+  font-size: 1rem;
+}
+
+button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: background 0.3s;
+}
+
+button:hover {
+  background-color: #f5d7a0;
+  cursor: pointer;
+}
+
+/* ---------------------------
+   ไอคอนในปุ่ม
+---------------------------- */
+.btn-icon {
+  width: 16px;
+  height: 16px;
+  vertical-align: middle;
+}
+
+/* ---------------------------
+   วงกลมหลัก
+---------------------------- */
+.circle {
+  position: relative;
+  width: 360px;
+  height: 360px;
+  border-radius: 50%;
+  border: 2px solid #e2c896;
+  margin-top: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.key {
+  position: absolute;
+  width: 50px;
+  height: 30px;
+  line-height: 30px;
+  text-align: center;
+  background-color: #f9f2e4;
+  border-radius: 8px;
+  transform-origin: 50% 180px;
+  transition: background 0.3s;
+}
+
+.key:hover {
+  background-color: #f5d7a0;
+  cursor: pointer;
+}
+
+/* ---------------------------
+   ส่วนกลางของวงกลม
+---------------------------- */
+.center {
+  position: relative;
+  margin-top: -220px;
+  text-align: center;
+}
+
+.center h2 {
+  font-size: 1.8rem;
+  margin: 0;
+}
+
+.center p {
+  margin-top: 0.3rem;
+}
+
+/* ---------------------------
+   คอร์ดไดอะโทนิก
+---------------------------- */
+.chords {
+  margin-top: 250px;
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.chord {
+  background-color: #f9f2e4;
+  border: 1px solid #e2c896;
+  padding: 12px 24px;
+  border-radius: 10px;
+  font-weight: bold;
+  min-width: 60px;
+}
+
+.scale {
+  margin-top: 1.5rem;
+  font-size: 0.95rem;
+}
+
+
+.subtitle{
+  text-align: center;
+  font-size: 0.95rem;
+  color: #4a2f0f;
+  margin-top: 0.5rem; /* ← ลดช่องว่างด้านบนให้ใกล้ขึ้น */
+  margin-bottom: 2rem; /* ← เพิ่มช่องว่างล่างเล็กน้อยจากขอบจอ */
+  opacity: 0.8;
+}
+
+@media (max-width: 768px) {
+  #randomBtn {
+    color: #000000;
+  }
+}

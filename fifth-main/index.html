@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Circle of Fifths</title>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="feature.css" />
+</head>
+<body>
+  <h1>Circle of Fifths</h1>
+  <p class="subtitle">Interactive music theory visualization</p>
+
+  <div class="controls">
+    <select id="keySelect"></select>
+    <button id="randomBtn">🎲 Random Key</button>
+  </div>
+
+  <div class="circle" id="circle"></div>
+
+  <div class="center">
+    <h2 id="keyTitle">C Major</h2>
+    <p>I ii iii IV V vi vii°</p>
+  </div>
+
+  <div class="chords" id="chordList"></div>
+
+  <p class="scale" id="scaleText"></p>
+
+  <p class="subtitle">Click on any key to explore its chords and scale</p>
+  
+  <div id="progressionContainer"></div>
+  
+  <script type="module" src="script.js"></script>
+</body>
+</html>
