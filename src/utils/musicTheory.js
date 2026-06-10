@@ -4,6 +4,8 @@
  * secondary dominants, and chord function analysis.
  */
 
+import { ENHARMONIC_MAP } from './noteConstants.js';
+
 /**
  * @typedef {'tonic'|'subdominant'|'dominant'|'predominant'} ChordFunction
  */
@@ -21,11 +23,8 @@
 // Circle of fifths order (clockwise)
 const CIRCLE_ORDER = ['C', 'G', 'D', 'A', 'E', 'B', 'F#', 'C#', 'G#', 'D#', 'A#', 'E#', 'F', 'Bb', 'Eb', 'Ab', 'Db', 'Gb', 'Cb'];
 
-// Practical enharmonic equivalents
-const ENHARMONIC = {
-  'F#': 'Gb', 'C#': 'Db', 'G#': 'Ab', 'D#': 'Eb', 'A#': 'Bb', 'E#': 'F', 'B#': 'C',
-  'Gb': 'F#', 'Db': 'C#', 'Ab': 'G#', 'Eb': 'D#', 'Bb': 'A#'
-};
+// Re-export the shared enharmonic map for backward compatibility
+const ENHARMONIC = ENHARMONIC_MAP;
 
 // Major keys and their relative minors
 const RELATIVE_MINOR = {
@@ -150,8 +149,11 @@ function getSecondaryDominant(targetRomanNumeral) {
  * @returns {string}
  */
 function getScaleDegreeName(romanNumeral) {
-  const clean = romanNumeral.replace(/[♭b#♯]/, '');
+  const stripped = romanNumeral.replace(/[♭b#♯]/, '');
   const isFlat = romanNumeral.startsWith('♭') || romanNumeral.startsWith('b');
+  // Extract base Roman numeral, stripping quality/extension suffixes (7, maj7, 9, sus, +, etc.)
+  const match = stripped.match(/^(VII|VI|IV|V|I{1,3}|vii|vi|iv|v|i{1,3})/);
+  const clean = match ? match[1] : stripped;
   const names = {
     'I': 'Tonic',
     'i': 'Tonic',
@@ -168,7 +170,11 @@ function getScaleDegreeName(romanNumeral) {
     'VII': 'Leading Tone / Subtonic',
     'vii': 'Leading Tone / Subtonic'
   };
-  const name = names[clean] || '';
+  const name = names[clean];
+  if (!name) {
+    console.debug(`[musicTheory] No scale degree name for Roman numeral: "${romanNumeral}" (cleaned: "${clean}")`);
+    return 'Unknown';
+  }
   return isFlat ? `${name} (♭)` : name;
 }
 
