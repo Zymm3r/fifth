@@ -82,7 +82,9 @@ function updateKey(key) {
   chords.forEach((c, i) => {
     const div = document.createElement("div");
     div.className = "chord";
-    div.innerHTML = `<b>${c}</b>`;
+    const b = document.createElement("b");
+    b.textContent = c;
+    div.appendChild(b);
     chordList.appendChild(div);
   });
 
