@@ -25,12 +25,17 @@ let currentKey = 'C';
 export function initProgressionExplorer(containerId) {
   const container = document.getElementById(containerId);
   if (!container) {
-    console.warn(`Container #${containerId} not found`);
+    console.error(`[progressionExplorer] Container element "#${containerId}" not found in DOM \u2014 cannot initialize explorer`);
     return;
   }
 
-  container.innerHTML = buildExplorerHTML();
-  container.classList.add('progression-explorer');
+  try {
+    container.innerHTML = buildExplorerHTML();
+    container.classList.add('progression-explorer');
+  } catch (e) {
+    console.error('[progressionExplorer] Failed to render explorer HTML:', e);
+    container.innerHTML = '<p class="progression-explorer__error">Failed to load chord progressions. Please refresh the page.</p>';
+  }
 }
 
 /**
@@ -175,7 +180,10 @@ export function showChordDetail(chordName, romanNumeral, key) {
   const modalOverlay = document.getElementById('chordModalOverlay');
   const modalBody = document.getElementById('chordModalBody');
 
-  if (!modalOverlay || !modalBody) return;
+  if (!modalOverlay || !modalBody) {
+    console.error(`[progressionExplorer] Cannot show chord detail: modal elements missing from DOM`);
+    return;
+  }
 
   // Get barre chord info
   const barreInfo = getBarreChordInfo(chordName);
@@ -341,6 +349,10 @@ function handleModalEscape(e) {
 function trapModalFocus(e) {
   if (e.key !== 'Tab') return;
   const modal = document.getElementById('chordModalContent');
+  if (!modal) {
+    console.warn('[progressionExplorer] Modal content element not found during focus trap');
+    return;
+  }
   const focusable = modal.querySelectorAll('button, [tabindex]:not([tabindex="-1"]), input, select, textarea, a');
   if (focusable.length === 0) return;
   const first = focusable[0];
@@ -359,14 +371,27 @@ function trapModalFocus(e) {
  * @param {string} newKey - New musical key
  */
 export function updateExplorerForKey(newKey) {
+  if (!newKey) {
+    console.warn('[progressionExplorer] updateExplorerForKey called with empty key');
+    return;
+  }
   currentKey = newKey;
   const grid = document.getElementById('progressionGrid');
   const theoryPanel = document.getElementById('theoryPanel');
   if (grid) {
-    grid.innerHTML = renderProgressions(newKey);
+    try {
+      grid.innerHTML = renderProgressions(newKey);
+    } catch (e) {
+      console.error(`[progressionExplorer] Failed to render progressions for key "${newKey}":`, e);
+      grid.innerHTML = '<p class="progression-explorer__error">Failed to load progressions for this key.</p>';
+    }
   }
   if (theoryPanel) {
-    theoryPanel.innerHTML = renderTheoryPanel();
+    try {
+      theoryPanel.innerHTML = renderTheoryPanel();
+    } catch (e) {
+      console.error(`[progressionExplorer] Failed to render theory panel for key "${newKey}":`, e);
+    }
   }
 }
 
@@ -1868,7 +1893,9 @@ let audioInitDone = false;
 function onFirstInteraction() {
   if (audioInitDone) return;
   audioInitDone = true;
-  ensureAudioStarted();
+  ensureAudioStarted().catch(err => {
+    console.error('[progressionExplorer] Audio initialization failed on user interaction:', err);
+  });
 }
 
 // Use event delegation on document to handle hover on chord diagrams

@@ -168,7 +168,11 @@ function getScaleDegreeName(romanNumeral) {
     'VII': 'Leading Tone / Subtonic',
     'vii': 'Leading Tone / Subtonic'
   };
-  const name = names[clean] || '';
+  const name = names[clean];
+  if (!name) {
+    console.debug(`[musicTheory] No scale degree name for Roman numeral: "${romanNumeral}" (cleaned: "${clean}")`);
+    return 'Unknown';
+  }
   return isFlat ? `${name} (♭)` : name;
 }
 

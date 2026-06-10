@@ -47,12 +47,15 @@ function midiToNote(midi) {
  * @returns {string[]|null} Array of 6 fret strings, or null if not found
  */
 function getFingering(chordName) {
-  // This function reads from the global CHORD_DICT and ENHARMONIC_CHORD_ALIASES
-  // that are defined in progressionExplorer.js. We access them via a global lookup.
-  if (window.__getChordFingering) {
-    return window.__getChordFingering(chordName);
+  if (!window.__getChordFingering) {
+    console.warn(`[guitarAudio] Chord fingering lookup not available — progressionExplorer may not be initialized`);
+    return null;
   }
-  return null;
+  const fingering = window.__getChordFingering(chordName);
+  if (!fingering) {
+    console.debug(`[guitarAudio] No fingering data for chord: "${chordName}"`);
+  }
+  return fingering;
 }
 
 /**
@@ -82,17 +85,20 @@ function initSynth() {
 /**
  * Ensure the audio context is started (required by browser autoplay policy).
  * Must be called from a user interaction event.
+ * @returns {Promise<boolean>} Whether the audio context was successfully started
  */
 export async function ensureAudioStarted() {
-  if (audioStarted) return;
+  if (audioStarted) return true;
   try {
     if (Tone.context.state !== 'running') {
       await Tone.start();
     }
     audioStarted = true;
     initSynth();
+    return true;
   } catch (e) {
-    console.warn('Audio context failed to start:', e);
+    console.error('[guitarAudio] Audio context failed to start:', e);
+    return false;
   }
 }
 
@@ -100,15 +106,20 @@ export async function ensureAudioStarted() {
  * Play a guitar strum for the given chord name.
  * Notes are staggered to simulate a downward strum.
  * @param {string} chordName - e.g. "C", "Am7", "Bb9"
+ * @returns {boolean} Whether the strum was initiated successfully
  */
 export function playChordStrum(chordName) {
-  if (!audioStarted || !synth) return;
+  if (!audioStarted || !synth) {
+    console.debug(`[guitarAudio] Cannot play "${chordName}": audio not started or synth not initialized`);
+    return false;
+  }
 
   const fingering = getFingering(chordName);
-  if (!fingering) return;
+  if (!fingering) return false;
 
   const now = Tone.now();
   const strumDelay = 0.03; // 30ms between strings for strum feel
+  let notesPlayed = 0;
 
   fingering.forEach((fretStr, idx) => {
     const midi = fretToMidi(idx, fretStr);
@@ -118,10 +129,16 @@ export function playChordStrum(chordName) {
     const time = now + idx * strumDelay;
     try {
       synth.triggerAttackRelease(note, '8n', time);
+      notesPlayed++;
     } catch (e) {
-      // Ignore invalid notes
+      console.warn(`[guitarAudio] Failed to play note "${note}" for chord "${chordName}":`, e.message);
     }
   });
+
+  if (notesPlayed === 0) {
+    console.warn(`[guitarAudio] No notes played for chord "${chordName}" — all strings muted or invalid`);
+  }
+  return notesPlayed > 0;
 }
 
 /**

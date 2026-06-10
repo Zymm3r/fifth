@@ -180,13 +180,16 @@ function transposeRomanNumeral(romanNumeral, key) {
   const chordInfo = CHORD_QUALITY_MAP[baseRoman];
 
   if (!chordInfo) {
-    // If completely unrecognized, return as-is
+    console.warn(`[progressionTransposer] Unrecognized Roman numeral "${baseRoman}" (from "${romanNumeral}") — returning as-is`);
     return romanNumeral;
   }
 
   const chromatic = getChromaticForKey(key);
   const keyIndex = chromatic.indexOf(key);
-  if (keyIndex === -1) return romanNumeral;
+  if (keyIndex === -1) {
+    console.warn(`[progressionTransposer] Key "${key}" not found in chromatic scale — returning "${romanNumeral}" untransposed`);
+    return romanNumeral;
+  }
 
   // Compute the root note index: key root + interval + accidental offset
   const noteIndex = (keyIndex + chordInfo.interval + accidentalOffset + 12) % 12;
@@ -240,6 +243,7 @@ function transposeProgression(progressionId, key) {
 
   const progression = PROGRESSIONS.find(p => p.id === progressionId);
   if (!progression) {
+    console.warn(`[progressionTransposer] Progression "${progressionId}" not found in database`);
     return { chords: [], romanNumerals: [] };
   }
 
