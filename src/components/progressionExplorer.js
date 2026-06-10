@@ -596,7 +596,10 @@ export function setupChordHoverListeners() {
   // Create the mouseenter handler
   chordHoverHandler = async (e) => {
     // Find the closest chord button from the hover target
-    const btn = e.target.closest('.progression-chord-btn');
+    // Handle text nodes by falling back to parent element
+    const btn = e.target && typeof e.target.closest === 'function'
+      ? e.target.closest('.progression-chord-btn')
+      : e.target.parentElement?.closest('.progression-chord-btn');
     if (!btn) return;
 
     // Ensure audio context is running (async but non-blocking)
@@ -611,7 +614,10 @@ export function setupChordHoverListeners() {
 
   // Create the mouseleave handler
   chordLeaveHandler = (e) => {
-    const btn = e.target.closest('.progression-chord-btn');
+    // Handle text nodes by falling back to parent element
+    const btn = e.target && typeof e.target.closest === 'function'
+      ? e.target.closest('.progression-chord-btn')
+      : e.target.parentElement?.closest('.progression-chord-btn');
     if (!btn) return;
     // Let notes ring out naturally (no abrupt stop)
   };

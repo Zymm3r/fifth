@@ -68,7 +68,7 @@ function initSynth() {
 
   synth = new Tone.PolySynth(Tone.Synth, {
     oscillator: {
-      type: 'triangle8partial',
+      type: 'triangle',
       partialCount: 8
     },
     envelope: {
