@@ -4,6 +4,8 @@
  * Supports E-shape and A-shape barre chords (major and minor).
  */
 
+import { NOTE_INDEX_MAP, CHROMATIC_SHARP } from '../utils/noteConstants.js';
+
 /**
  * @typedef {Object} BarreChordInfo
  * @property {string} chordName - Full chord name (e.g. "F", "Bm")
@@ -74,16 +76,7 @@ function getChordImagePath(chordName) {
   return `chords/barre/${sanitized}.svg`;
 }
 
-/**
- * Notes in each chord quality.
- */
-const NOTE_MAP = {
-  'C': 0, 'C#': 1, 'Db': 1, 'D': 2, 'D#': 3, 'Eb': 3,
-  'E': 4, 'F': 5, 'F#': 6, 'Gb': 6, 'G': 7, 'G#': 8,
-  'Ab': 8, 'A': 9, 'A#': 10, 'Bb': 10, 'B': 11
-};
 
-const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 
 /**
  * Get notes in a chord.
@@ -92,7 +85,7 @@ const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 
  * @returns {string[]}
  */
 function getChordNotes(rootNote, quality) {
-  const rootIdx = NOTE_MAP[rootNote];
+  const rootIdx = NOTE_INDEX_MAP[rootNote];
   if (rootIdx === undefined) return [];
 
   const intervals = quality === 'minor'
@@ -103,7 +96,7 @@ function getChordNotes(rootNote, quality) {
 
   return intervals.map(interval => {
     const idx = (rootIdx + interval) % 12;
-    return NOTE_NAMES[idx];
+    return CHROMATIC_SHARP[idx];
   });
 }
 

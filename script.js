@@ -1,8 +1,7 @@
 import { initProgressionExplorer, updateExplorerForKey } from './src/components/progressionExplorer.js';
+import { CIRCLE_OF_FIFTHS_KEYS } from './src/utils/noteConstants.js';
 
-const keys = [
-  "C", "G", "D", "A", "E", "B", "Gb", "Db", "Ab", "Eb", "Bb", "F"
-];
+const keys = CIRCLE_OF_FIFTHS_KEYS;
 
 const chordsByKey = {
   "C": ["C", "Dm", "Em", "F", "G", "Am", "Bdim"],
