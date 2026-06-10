@@ -1,0 +1,16 @@
+{
+  "name": "fifth",
+  "version": "1.0.0",
+  "main": "script.js",
+  "scripts": {
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "devDependencies": {
+    "vitest": "^4.1.8"
+  }
+}
