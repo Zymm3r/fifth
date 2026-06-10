@@ -368,6 +368,8 @@ export function updateExplorerForKey(newKey) {
   if (theoryPanel) {
     theoryPanel.innerHTML = renderTheoryPanel();
   }
+  // Re-setup hover listeners after DOM update to ensure proper event delegation
+  setupChordHoverListeners();
 }
 
 const CHORD_DICT = {
@@ -1842,7 +1844,7 @@ export function initKeyboardNavigation() {
  * @param {string} chordName
  * @returns {string[]|null}
  */
-function getChordFingering(chordName) {
+function getChordFingeringInternal(chordName) {
   let strings = CHORD_DICT[chordName];
   if (!strings) {
     const alias = ENHARMONIC_CHORD_ALIASES[chordName];
@@ -1854,8 +1856,8 @@ function getChordFingering(chordName) {
 // Expose chord detail function globally for onclick handlers in rendered HTML
 window.__showChordDetail = showChordDetail;
 
-// Expose chord fingering lookup for guitarAudio.js
-window.__getChordFingering = getChordFingering;
+// Expose chord fingering lookup for guitarAudio.js using a different internal name
+window.__getChordFingering = getChordFingeringInternal;
 
 // --- Guitar Audio Hover ---
 
@@ -1864,34 +1866,86 @@ let audioInitDone = false;
 
 /**
  * Initialize audio on first user interaction (required by browser autoplay policy).
+ * This function must be called from within a user gesture event listener.
  */
-function onFirstInteraction() {
+async function onFirstInteraction() {
   if (audioInitDone) return;
   audioInitDone = true;
-  ensureAudioStarted();
+  try {
+    await ensureAudioStarted();
+  } catch (e) {
+    console.warn('Failed to initialize audio on first interaction:', e);
+  }
 }
 
-// Use event delegation on document to handle hover on chord diagrams
-document.addEventListener('mouseenter', (e) => {
-  // Find the closest chord button from the hover target
-  const btn = e.target.closest('.progression-chord-btn');
-  if (!btn) return;
+/** @type {function|null} Stored mouseenter handler for cleanup */
+let chordHoverHandler = null;
 
-  // Ensure audio context is running
-  onFirstInteraction();
+/** @type {function|null} Stored mouseleave handler for cleanup */
+let chordLeaveHandler = null;
 
-  const chordName = btn.getAttribute('data-chord');
-  if (chordName) {
-    playChordStrum(chordName);
+/**
+ * Set up audio hover event listeners for chord buttons.
+ * This ensures audio plays when hovering over button.progression-chord-btn elements.
+ * @returns {void}
+ */
+export function setupChordHoverListeners() {
+  // Remove existing listeners if they exist to prevent duplicates
+  if (chordHoverHandler) {
+    document.removeEventListener('mouseenter', chordHoverHandler, true);
   }
-}, true);
+  if (chordLeaveHandler) {
+    document.removeEventListener('mouseleave', chordLeaveHandler, true);
+  }
 
-// Stop notes when mouse leaves the chord button area
-document.addEventListener('mouseleave', (e) => {
-  const btn = e.target.closest('.progression-chord-btn');
-  if (!btn) return;
-  // Let notes ring out naturally (no abrupt stop)
-}, true);
+  // Create the mouseenter handler
+  chordHoverHandler = async (e) => {
+    // Find the closest chord button from the hover target
+    const btn = e.target.closest('.progression-chord-btn');
+    if (!btn) return;
 
-// Also ensure audio context on first click anywhere
-document.addEventListener('click', onFirstInteraction, { once: true });
+    // Ensure audio context is running (async but non-blocking)
+    onFirstInteraction();
+
+    // Extract chord name from data-chord attribute
+    const chordName = btn.getAttribute('data-chord');
+    if (chordName) {
+      playChordStrum(chordName);
+    }
+  };
+
+  // Create the mouseleave handler
+  chordLeaveHandler = (e) => {
+    const btn = e.target.closest('.progression-chord-btn');
+    if (!btn) return;
+    // Let notes ring out naturally (no abrupt stop)
+  };
+
+  // Add listeners with capture phase to ensure we catch events before they bubble
+  document.addEventListener('mouseenter', chordHoverHandler, true);
+  document.addEventListener('mouseleave', chordLeaveHandler, true);
+}
+
+/**
+ * Clean up hover event listeners.
+ * Call this when the component is destroyed to prevent memory leaks.
+ * @returns {void}
+ */
+export function cleanupChordHoverListeners() {
+  if (chordHoverHandler) {
+    document.removeEventListener('mouseenter', chordHoverHandler, true);
+    chordHoverHandler = null;
+  }
+  if (chordLeaveHandler) {
+    document.removeEventListener('mouseleave', chordLeaveHandler, true);
+    chordLeaveHandler = null;
+  }
+}
+
+// Set up hover listeners when module loads
+setupChordHoverListeners();
+
+// Also ensure audio context on first click anywhere (async handler)
+document.addEventListener('click', async () => {
+  await onFirstInteraction();
+}, { once: true });

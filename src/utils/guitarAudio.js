@@ -82,15 +82,18 @@ function initSynth() {
 /**
  * Ensure the audio context is started (required by browser autoplay policy).
  * Must be called from a user interaction event.
+ * This defers Tone.js initialization until explicit user interaction.
  */
 export async function ensureAudioStarted() {
   if (audioStarted) return;
   try {
-    if (Tone.context.state !== 'running') {
-      await Tone.start();
-    }
-    audioStarted = true;
+    // Ensure Tone.js context is started (must be in user gesture)
+    await Tone.start();
+
+    // Create synth only after successful Tone.start()
     initSynth();
+
+    audioStarted = true;
   } catch (e) {
     console.warn('Audio context failed to start:', e);
   }
@@ -102,7 +105,11 @@ export async function ensureAudioStarted() {
  * @param {string} chordName - e.g. "C", "Am7", "Bb9"
  */
 export function playChordStrum(chordName) {
-  if (!audioStarted || !synth) return;
+  // Ensure audio is initialized before playing
+  if (!audioStarted || !synth) {
+    console.warn('Audio not initialized. Call ensureAudioStarted() from a user gesture first.');
+    return;
+  }
 
   const fingering = getFingering(chordName);
   if (!fingering) return;
@@ -119,7 +126,8 @@ export function playChordStrum(chordName) {
     try {
       synth.triggerAttackRelease(note, '8n', time);
     } catch (e) {
-      // Ignore invalid notes
+      // Ignore invalid notes or audio context issues
+      console.warn('Failed to play note:', note, e);
     }
   });
 }
