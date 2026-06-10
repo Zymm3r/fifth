@@ -11,6 +11,18 @@ import { getAllTransposedProgressions, transposeProgression } from '../utils/pro
 import { getRelativeKey, getParallelKey, getCircleNeighbors, getChordFunction, getScaleDegreeName, getSecondaryDominant } from '../utils/musicTheory.js';
 import { getBarreChordInfo } from '../data/barreChords.js';
 import { ensureAudioStarted, playChordStrum, stopAllNotes } from '../utils/guitarAudio.js';
+import { getChordFingering } from '../utils/chordLookup.js';
+import { ENHARMONIC_MAP } from '../utils/noteConstants.js';
+
+/**
+ * Escape a string for safe insertion into HTML attributes.
+ * Prevents DOM XSS via attribute injection.
+ * @param {string} str
+ * @returns {string}
+ */
+function escapeAttr(str) {
+  return String(str).replace(/&/g, '&amp;').replace(/'/g, '&#39;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
 
 /** @type {string|null} Currently focused chord for accessibility */
 let focusedChordId = null;
@@ -25,12 +37,17 @@ let currentKey = 'C';
 export function initProgressionExplorer(containerId) {
   const container = document.getElementById(containerId);
   if (!container) {
-    console.warn(`Container #${containerId} not found`);
+    console.error(`[progressionExplorer] Container element "#${containerId}" not found in DOM \u2014 cannot initialize explorer`);
     return;
   }
 
-  container.innerHTML = buildExplorerHTML();
-  container.classList.add('progression-explorer');
+  try {
+    container.innerHTML = buildExplorerHTML();
+    container.classList.add('progression-explorer');
+  } catch (e) {
+    console.error('[progressionExplorer] Failed to render explorer HTML:', e);
+    container.innerHTML = '<p class="progression-explorer__error">Failed to load chord progressions. Please refresh the page.</p>';
+  }
 }
 
 /**
@@ -78,22 +95,22 @@ function renderProgressions(key) {
     const songData = SONG_EXAMPLES.find(s => s.progressionId === progression.id);
     const chordDisplay = chords.map((chord, idx) => `
       <button class="progression-chord-btn" 
-              data-chord="${chord}" 
-              data-roman="${romanNumerals[idx]}"
-              data-progression-id="${progression.id}"
-              aria-label="${chord} chord"
-              tabindex="0"
-              onclick="window.__showChordDetail('${chord}', '${romanNumerals[idx]}', '${key}')">
-        <span class="chord-name">${chord}</span>
+              data-chord="${escapeAttr(chord)}" 
+              data-roman="${escapeAttr(romanNumerals[idx])}"
+              data-key="${escapeAttr(key)}"
+              data-progression-id="${escapeAttr(progression.id)}"
+              aria-label="${escapeAttr(chord)} chord"
+              tabindex="0">
+        <span class="chord-name">${escapeAttr(chord)}</span>
         <span class="chord-svg">${renderChordDiagram(chord)}</span>
       </button>
     `).join('');
 
     const songList = songData?.songs?.slice(0, 3).map(s => `
-      <li class="song-example" title="${s.album ? `Album: ${s.album}` : ''}">
-        <span class="song-title">${s.title}</span>
-        <span class="song-artist">${s.artist}</span>
-        ${s.year ? `<span class="song-year">(${s.year})</span>` : ''}
+      <li class="song-example" title="${s.album ? `Album: ${escapeAttr(s.album)}` : ''}">
+        <span class="song-title">${escapeAttr(s.title)}</span>
+        <span class="song-artist">${escapeAttr(s.artist)}</span>
+        ${s.year ? `<span class="song-year">(${escapeAttr(String(s.year))})</span>` : ''}
       </li>
     `).join('') || '<li class="song-example--none">No examples loaded</li>';
 
@@ -175,7 +192,10 @@ export function showChordDetail(chordName, romanNumeral, key) {
   const modalOverlay = document.getElementById('chordModalOverlay');
   const modalBody = document.getElementById('chordModalBody');
 
-  if (!modalOverlay || !modalBody) return;
+  if (!modalOverlay || !modalBody) {
+    console.error(`[progressionExplorer] Cannot show chord detail: modal elements missing from DOM`);
+    return;
+  }
 
   // Get barre chord info
   const barreInfo = getBarreChordInfo(chordName);
@@ -190,11 +210,10 @@ export function showChordDetail(chordName, romanNumeral, key) {
     .filter((c, idx, arr) => arr.indexOf(c) === idx && c !== chordName)
     .slice(0, 6);
 
-  const enharmonicMap = { 'A#': 'Bb', 'Bb': 'A#', 'C#': 'Db', 'Db': 'C#', 'D#': 'Eb', 'Eb': 'D#', 'F#': 'Gb', 'Gb': 'F#', 'G#': 'Ab', 'Ab': 'G#' };
   let enharmonicText = '';
   const rootMatch = chordName.match(/^[A-G][#b]?/);
-  if (rootMatch && enharmonicMap[rootMatch[0]]) {
-    const enharmonicChord = chordName.replace(rootMatch[0], enharmonicMap[rootMatch[0]]);
+  if (rootMatch && ENHARMONIC_MAP[rootMatch[0]]) {
+    const enharmonicChord = chordName.replace(rootMatch[0], ENHARMONIC_MAP[rootMatch[0]]);
     enharmonicText = ` <span style="font-size: 1.2rem; color: #888; font-weight: normal;">(${chordName} = ${enharmonicChord})</span>`;
   }
 
@@ -272,10 +291,12 @@ export function showChordDetail(chordName, romanNumeral, key) {
         <h4>Related Chords</h4>
         <div class="chord-detail__related-list">
           ${relatedChords.map(c => `
-            <button class="related-chord-btn" 
-                    onclick="window.__showChordDetail('${c}', '${romanNumeral}', '${key}')"
-                    aria-label="Show details for ${c}">
-              ${c}
+            <button class="related-chord-btn"
+                    data-chord="${escapeAttr(c)}"
+                    data-roman="${escapeAttr(romanNumeral)}"
+                    data-key="${escapeAttr(key)}"
+                    aria-label="Show details for ${escapeAttr(c)}">
+              ${escapeAttr(c)}
             </button>
           `).join('')}
         </div>
@@ -292,26 +313,15 @@ export function showChordDetail(chordName, romanNumeral, key) {
     if (closeBtn) closeBtn.focus();
   }, 100);
 
-  // Trap focus in modal
+  // Close handlers (use named functions to avoid listener leaks)
   modalOverlay.addEventListener('keydown', trapModalFocus);
+  modalOverlay.addEventListener('click', handleOverlayClick);
+  document.addEventListener('keydown', handleModalEscape);
 
-  // Close handlers
   const closeBtn = document.getElementById('chordModalClose');
   if (closeBtn) {
     closeBtn.onclick = () => closeChordModal();
-    closeBtn.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' || e.key === ' ') {
-        e.preventDefault();
-        closeChordModal();
-      }
-    });
   }
-
-  modalOverlay.addEventListener('click', (e) => {
-    if (e.target === modalOverlay) closeChordModal();
-  });
-
-  document.addEventListener('keydown', handleModalEscape);
 }
 
 /**
@@ -322,8 +332,18 @@ function closeChordModal() {
   if (modalOverlay) {
     modalOverlay.hidden = true;
     modalOverlay.classList.remove('chord-modal__overlay--visible');
+    modalOverlay.removeEventListener('keydown', trapModalFocus);
+    modalOverlay.removeEventListener('click', handleOverlayClick);
   }
   document.removeEventListener('keydown', handleModalEscape);
+}
+
+/**
+ * Handle click on modal overlay background to close.
+ * @param {MouseEvent} e
+ */
+function handleOverlayClick(e) {
+  if (e.target === document.getElementById('chordModalOverlay')) closeChordModal();
 }
 
 /**
@@ -341,6 +361,10 @@ function handleModalEscape(e) {
 function trapModalFocus(e) {
   if (e.key !== 'Tab') return;
   const modal = document.getElementById('chordModalContent');
+  if (!modal) {
+    console.warn('[progressionExplorer] Modal content element not found during focus trap');
+    return;
+  }
   const focusable = modal.querySelectorAll('button, [tabindex]:not([tabindex="-1"]), input, select, textarea, a');
   if (focusable.length === 0) return;
   const first = focusable[0];
@@ -359,1374 +383,35 @@ function trapModalFocus(e) {
  * @param {string} newKey - New musical key
  */
 export function updateExplorerForKey(newKey) {
+  if (!newKey) {
+    console.warn('[progressionExplorer] updateExplorerForKey called with empty key');
+    return;
+  }
   currentKey = newKey;
   const grid = document.getElementById('progressionGrid');
   const theoryPanel = document.getElementById('theoryPanel');
   if (grid) {
-    grid.innerHTML = renderProgressions(newKey);
+    try {
+      grid.innerHTML = renderProgressions(newKey);
+    } catch (e) {
+      console.error(`[progressionExplorer] Failed to render progressions for key "${newKey}":`, e);
+      grid.innerHTML = '<p class="progression-explorer__error">Failed to load progressions for this key.</p>';
+    }
   }
   if (theoryPanel) {
-    theoryPanel.innerHTML = renderTheoryPanel();
+    try {
+      theoryPanel.innerHTML = renderTheoryPanel();
+    } catch (e) {
+      console.error(`[progressionExplorer] Failed to render theory panel for key "${newKey}":`, e);
+    }
   }
   // Re-setup hover listeners after DOM update to ensure proper event delegation
   setupChordHoverListeners();
 }
 
-const CHORD_DICT = {
-  "Ab": [
-    "4",
-    "6",
-    "6",
-    "5",
-    "4",
-    "4"
-  ],
-  "G#m": [
-    "4",
-    "6",
-    "6",
-    "4",
-    "4",
-    "4"
-  ],
-  "Ab6": [
-    "4",
-    "X",
-    "1",
-    "1",
-    "1",
-    "1"
-  ],
-  "Ab7": [
-    "4",
-    "3",
-    "4",
-    "1",
-    "1",
-    "2"
-  ],
-  "Ab9": [
-    "4",
-    "3",
-    "4",
-    "3",
-    "4",
-    "X"
-  ],
-  "G#m6": [
-    "4",
-    "X",
-    "1",
-    "1",
-    "0",
-    "1"
-  ],
-  "G#m7": [
-    "4",
-    "X",
-    "4",
-    "4",
-    "4",
-    "4"
-  ],
-  "Abmaj7": [
-    "4",
-    "X",
-    "1",
-    "1",
-    "1",
-    "3"
-  ],
-  "G#dim": [
-    "4",
-    "X",
-    "0",
-    "1",
-    "0",
-    "1"
-  ],
-  "Ab+": [
-    "4",
-    "X",
-    "2",
-    "1",
-    "1",
-    "0"
-  ],
-  "Absus": [
-    "4",
-    "X",
-    "1",
-    "1",
-    "2",
-    "4"
-  ],
-  "A": [
-    "X",
-    "0",
-    "2",
-    "2",
-    "2",
-    "0"
-  ],
-  "Am": [
-    "X",
-    "0",
-    "2",
-    "2",
-    "1",
-    "0"
-  ],
-  "A6": [
-    "X",
-    "0",
-    "2",
-    "2",
-    "2",
-    "2"
-  ],
-  "A7": [
-    "X",
-    "0",
-    "2",
-    "0",
-    "2",
-    "0"
-  ],
-  "A9": [
-    "X",
-    "0",
-    "2",
-    "4",
-    "2",
-    "3"
-  ],
-  "Am6": [
-    "X",
-    "0",
-    "2",
-    "2",
-    "1",
-    "2"
-  ],
-  "Am7": [
-    "X",
-    "0",
-    "2",
-    "0",
-    "1",
-    "0"
-  ],
-  "Amaj7": [
-    "X",
-    "0",
-    "2",
-    "1",
-    "2",
-    "0"
-  ],
-  "Adim": [
-    "X",
-    "X",
-    "1",
-    "2",
-    "1",
-    "2"
-  ],
-  "A+": [
-    "X",
-    "0",
-    "3",
-    "2",
-    "2",
-    "1"
-  ],
-  "Asus": [
-    "X",
-    "0",
-    "2",
-    "2",
-    "3",
-    "0"
-  ],
-  "Bb": [
-    "X",
-    "1",
-    "3",
-    "3",
-    "3",
-    "1"
-  ],
-  "Bbm": [
-    "X",
-    "1",
-    "3",
-    "3",
-    "2",
-    "1"
-  ],
-  "Bb6": [
-    "X",
-    "1",
-    "3",
-    "0",
-    "3",
-    "3"
-  ],
-  "Bb7": [
-    "X",
-    "1",
-    "3",
-    "1",
-    "3",
-    "1"
-  ],
-  "Bb9": [
-    "X",
-    "1",
-    "0",
-    "1",
-    "1",
-    "1"
-  ],
-  "Bbm6": [
-    "X",
-    "1",
-    "3",
-    "0",
-    "2",
-    "3"
-  ],
-  "Bbm7": [
-    "X",
-    "1",
-    "3",
-    "1",
-    "2",
-    "1"
-  ],
-  "Bbmaj7": [
-    "X",
-    "1",
-    "3",
-    "2",
-    "3",
-    "1"
-  ],
-  "Bbdim": [
-    "X",
-    "1",
-    "2",
-    "3",
-    "2",
-    "X"
-  ],
-  "Bb+": [
-    "X",
-    "1",
-    "0",
-    "3",
-    "3",
-    "2"
-  ],
-  "Bbsus": [
-    "X",
-    "1",
-    "3",
-    "3",
-    "4",
-    "1"
-  ],
-  "B": [
-    "X",
-    "2",
-    "4",
-    "4",
-    "4",
-    "2"
-  ],
-  "Bm": [
-    "X",
-    "2",
-    "4",
-    "4",
-    "3",
-    "2"
-  ],
-  "B6": [
-    "X",
-    "2",
-    "4",
-    "1",
-    "4",
-    "4"
-  ],
-  "B7": [
-    "X",
-    "2",
-    "4",
-    "2",
-    "4",
-    "2"
-  ],
-  "B9": [
-    "X",
-    "2",
-    "1",
-    "2",
-    "2",
-    "2"
-  ],
-  "Bm6": [
-    "X",
-    "2",
-    "0",
-    "1",
-    "0",
-    "2"
-  ],
-  "Bm7": [
-    "X",
-    "2",
-    "4",
-    "2",
-    "3",
-    "2"
-  ],
-  "Bmaj7": [
-    "X",
-    "2",
-    "4",
-    "3",
-    "4",
-    "2"
-  ],
-  "Bdim": [
-    "X",
-    "2",
-    "3",
-    "4",
-    "3",
-    "X"
-  ],
-  "B+": [
-    "X",
-    "2",
-    "1",
-    "0",
-    "0",
-    "3"
-  ],
-  "Bsus": [
-    "X",
-    "2",
-    "4",
-    "4",
-    "5",
-    "2"
-  ],
-  "C": [
-    "X",
-    "3",
-    "2",
-    "0",
-    "1",
-    "0"
-  ],
-  "Cm": [
-    "X",
-    "3",
-    "5",
-    "5",
-    "4",
-    "3"
-  ],
-  "C6": [
-    "X",
-    "3",
-    "2",
-    "2",
-    "1",
-    "0"
-  ],
-  "C7": [
-    "X",
-    "3",
-    "2",
-    "3",
-    "1",
-    "0"
-  ],
-  "C9": [
-    "X",
-    "3",
-    "2",
-    "3",
-    "3",
-    "3"
-  ],
-  "Cm6": [
-    "X",
-    "3",
-    "1",
-    "2",
-    "1",
-    "3"
-  ],
-  "Cm7": [
-    "X",
-    "3",
-    "5",
-    "3",
-    "4",
-    "3"
-  ],
-  "Cmaj7": [
-    "X",
-    "3",
-    "2",
-    "0",
-    "0",
-    "0"
-  ],
-  "Cdim": [
-    "X",
-    "X",
-    "1",
-    "2",
-    "1",
-    "2"
-  ],
-  "C+": [
-    "X",
-    "3",
-    "2",
-    "1",
-    "1",
-    "0"
-  ],
-  "Csus": [
-    "X",
-    "3",
-    "3",
-    "0",
-    "1",
-    "1"
-  ],
-  "Db": [
-    "X",
-    "4",
-    "6",
-    "6",
-    "6",
-    "4"
-  ],
-  "C#m": [
-    "X",
-    "4",
-    "6",
-    "6",
-    "5",
-    "4"
-  ],
-  "Db6": [
-    "X",
-    "4",
-    "6",
-    "3",
-    "6",
-    "6"
-  ],
-  "Db7": [
-    "X",
-    "4",
-    "6",
-    "4",
-    "6",
-    "4"
-  ],
-  "Db9": [
-    "X",
-    "4",
-    "3",
-    "4",
-    "4",
-    "4"
-  ],
-  "C#m6": [
-    "X",
-    "4",
-    "2",
-    "3",
-    "2",
-    "4"
-  ],
-  "C#m7": [
-    "X",
-    "4",
-    "6",
-    "4",
-    "5",
-    "4"
-  ],
-  "Dbmaj7": [
-    "X",
-    "4",
-    "6",
-    "5",
-    "6",
-    "4"
-  ],
-  "C#dim": [
-    "X",
-    "4",
-    "5",
-    "6",
-    "5",
-    "X"
-  ],
-  "Db+": [
-    "X",
-    "4",
-    "3",
-    "2",
-    "2",
-    "1"
-  ],
-  "Dbsus": [
-    "X",
-    "4",
-    "6",
-    "6",
-    "7",
-    "4"
-  ],
-  "D": [
-    "X",
-    "X",
-    "0",
-    "2",
-    "3",
-    "2"
-  ],
-  "Dm": [
-    "X",
-    "X",
-    "0",
-    "2",
-    "3",
-    "1"
-  ],
-  "D6": [
-    "X",
-    "X",
-    "0",
-    "2",
-    "0",
-    "2"
-  ],
-  "D7": [
-    "X",
-    "X",
-    "0",
-    "2",
-    "1",
-    "2"
-  ],
-  "D9": [
-    "X",
-    "5",
-    "4",
-    "5",
-    "5",
-    "5"
-  ],
-  "Dm6": [
-    "X",
-    "X",
-    "0",
-    "2",
-    "0",
-    "1"
-  ],
-  "Dm7": [
-    "X",
-    "X",
-    "0",
-    "2",
-    "1",
-    "1"
-  ],
-  "Dmaj7": [
-    "X",
-    "X",
-    "0",
-    "2",
-    "2",
-    "2"
-  ],
-  "Ddim": [
-    "X",
-    "X",
-    "0",
-    "1",
-    "0",
-    "1"
-  ],
-  "D+": [
-    "X",
-    "X",
-    "0",
-    "3",
-    "3",
-    "2"
-  ],
-  "Dsus": [
-    "X",
-    "X",
-    "0",
-    "2",
-    "3",
-    "3"
-  ],
-  "Eb": [
-    "X",
-    "6",
-    "8",
-    "8",
-    "8",
-    "6"
-  ],
-  "Ebm": [
-    "X",
-    "6",
-    "8",
-    "8",
-    "7",
-    "6"
-  ],
-  "Eb6": [
-    "X",
-    "6",
-    "8",
-    "5",
-    "8",
-    "8"
-  ],
-  "Eb7": [
-    "X",
-    "6",
-    "8",
-    "6",
-    "8",
-    "6"
-  ],
-  "Eb9": [
-    "X",
-    "6",
-    "5",
-    "6",
-    "6",
-    "6"
-  ],
-  "Ebm6": [
-    "X",
-    "6",
-    "4",
-    "5",
-    "4",
-    "6"
-  ],
-  "Ebm7": [
-    "X",
-    "6",
-    "8",
-    "6",
-    "7",
-    "6"
-  ],
-  "Ebmaj7": [
-    "X",
-    "6",
-    "8",
-    "7",
-    "8",
-    "6"
-  ],
-  "Ebdim": [
-    "X",
-    "6",
-    "7",
-    "8",
-    "7",
-    "X"
-  ],
-  "Eb+": [
-    "X",
-    "6",
-    "5",
-    "4",
-    "4",
-    "3"
-  ],
-  "Ebsus": [
-    "X",
-    "6",
-    "8",
-    "8",
-    "9",
-    "6"
-  ],
-  "E": [
-    "0",
-    "2",
-    "2",
-    "1",
-    "0",
-    "0"
-  ],
-  "Em": [
-    "0",
-    "2",
-    "2",
-    "0",
-    "0",
-    "0"
-  ],
-  "E6": [
-    "0",
-    "2",
-    "2",
-    "1",
-    "2",
-    "0"
-  ],
-  "E7": [
-    "0",
-    "2",
-    "0",
-    "1",
-    "0",
-    "0"
-  ],
-  "E9": [
-    "0",
-    "2",
-    "2",
-    "1",
-    "0",
-    "2"
-  ],
-  "Em6": [
-    "0",
-    "2",
-    "2",
-    "0",
-    "2",
-    "0"
-  ],
-  "Em7": [
-    "0",
-    "2",
-    "0",
-    "0",
-    "0",
-    "0"
-  ],
-  "Emaj7": [
-    "0",
-    "2",
-    "1",
-    "1",
-    "0",
-    "0"
-  ],
-  "Edim": [
-    "X",
-    "X",
-    "2",
-    "3",
-    "2",
-    "3"
-  ],
-  "E+": [
-    "0",
-    "3",
-    "2",
-    "1",
-    "1",
-    "0"
-  ],
-  "Esus": [
-    "0",
-    "2",
-    "2",
-    "2",
-    "0",
-    "0"
-  ],
-  "F": [
-    "1",
-    "3",
-    "3",
-    "2",
-    "1",
-    "1"
-  ],
-  "Fm": [
-    "1",
-    "3",
-    "3",
-    "1",
-    "1",
-    "1"
-  ],
-  "F6": [
-    "1",
-    "X",
-    "0",
-    "2",
-    "1",
-    "1"
-  ],
-  "F7": [
-    "1",
-    "3",
-    "1",
-    "2",
-    "1",
-    "1"
-  ],
-  "F9": [
-    "1",
-    "X",
-    "1",
-    "0",
-    "1",
-    "1"
-  ],
-  "Fm6": [
-    "1",
-    "X",
-    "0",
-    "1",
-    "1",
-    "1"
-  ],
-  "Fm7": [
-    "1",
-    "3",
-    "1",
-    "1",
-    "1",
-    "1"
-  ],
-  "Fmaj7": [
-    "1",
-    "X",
-    "2",
-    "2",
-    "1",
-    "0"
-  ],
-  "Fdim": [
-    "1",
-    "X",
-    "0",
-    "1",
-    "0",
-    "1"
-  ],
-  "F+": [
-    "1",
-    "X",
-    "3",
-    "2",
-    "2",
-    "1"
-  ],
-  "Fsus": [
-    "1",
-    "3",
-    "3",
-    "3",
-    "1",
-    "1"
-  ],
-  "F#": [
-    "2",
-    "4",
-    "4",
-    "3",
-    "2",
-    "2"
-  ],
-  "F#m": [
-    "2",
-    "4",
-    "4",
-    "2",
-    "2",
-    "2"
-  ],
-  "Gb6": [
-    "2",
-    "X",
-    "1",
-    "3",
-    "2",
-    "2"
-  ],
-  "F#7": [
-    "2",
-    "4",
-    "2",
-    "3",
-    "2",
-    "2"
-  ],
-  "F#9": [
-    "2",
-    "X",
-    "2",
-    "1",
-    "2",
-    "2"
-  ],
-  "F#m6": [
-    "2",
-    "X",
-    "1",
-    "2",
-    "2",
-    "2"
-  ],
-  "F#m7": [
-    "2",
-    "4",
-    "2",
-    "2",
-    "2",
-    "2"
-  ],
-  "Gbmaj7": [
-    "2",
-    "X",
-    "3",
-    "3",
-    "2",
-    "1"
-  ],
-  "F#dim": [
-    "2",
-    "X",
-    "1",
-    "2",
-    "1",
-    "2"
-  ],
-  "Gb+": [
-    "2",
-    "X",
-    "4",
-    "3",
-    "3",
-    "2"
-  ],
-  "Gbsus": [
-    "2",
-    "4",
-    "4",
-    "4",
-    "2",
-    "2"
-  ],
-  "G": [
-    "3",
-    "2",
-    "0",
-    "0",
-    "0",
-    "3"
-  ],
-  "Gm": [
-    "3",
-    "5",
-    "5",
-    "3",
-    "3",
-    "3"
-  ],
-  "G6": [
-    "3",
-    "2",
-    "0",
-    "0",
-    "0",
-    "0"
-  ],
-  "G7": [
-    "3",
-    "2",
-    "0",
-    "0",
-    "0",
-    "1"
-  ],
-  "G9": [
-    "3",
-    "X",
-    "0",
-    "2",
-    "0",
-    "1"
-  ],
-  "Gm6": [
-    "3",
-    "X",
-    "2",
-    "3",
-    "3",
-    "3"
-  ],
-  "Gm7": [
-    "3",
-    "5",
-    "3",
-    "3",
-    "3",
-    "3"
-  ],
-  "Gmaj7": [
-    "3",
-    "2",
-    "0",
-    "0",
-    "0",
-    "2"
-  ],
-  "Gdim": [
-    "3",
-    "X",
-    "2",
-    "3",
-    "2",
-    "3"
-  ],
-  "G+": [
-    "3",
-    "X",
-    "1",
-    "0",
-    "0",
-    "3"
-  ],
-  "Gsus": [
-    "3",
-    "X",
-    "0",
-    "0",
-    "1",
-    "3"
-  ],
-  "C#": [
-    "X",
-    "4",
-    "6",
-    "6",
-    "6",
-    "4"
-  ],
-  "Dbm": [
-    "X",
-    "4",
-    "6",
-    "6",
-    "5",
-    "4"
-  ],
-  "C#6": [
-    "X",
-    "4",
-    "6",
-    "3",
-    "6",
-    "6"
-  ],
-  "C#7": [
-    "X",
-    "4",
-    "6",
-    "4",
-    "6",
-    "4"
-  ],
-  "C#9": [
-    "X",
-    "4",
-    "3",
-    "4",
-    "4",
-    "4"
-  ],
-  "C#maj7": [
-    "X",
-    "4",
-    "6",
-    "5",
-    "6",
-    "4"
-  ],
-  "Dbdim": [
-    "X",
-    "4",
-    "5",
-    "6",
-    "5",
-    "X"
-  ],
-  "C#+": [
-    "X",
-    "4",
-    "3",
-    "2",
-    "2",
-    "1"
-  ],
-  "C#sus": [
-    "X",
-    "4",
-    "6",
-    "6",
-    "7",
-    "4"
-  ],
-  "D#": [
-    "X",
-    "6",
-    "8",
-    "8",
-    "8",
-    "6"
-  ],
-  "D#m": [
-    "X",
-    "6",
-    "8",
-    "8",
-    "7",
-    "6"
-  ],
-  "D#6": [
-    "X",
-    "6",
-    "8",
-    "5",
-    "8",
-    "8"
-  ],
-  "D#7": [
-    "X",
-    "6",
-    "8",
-    "6",
-    "8",
-    "6"
-  ],
-  "D#9": [
-    "X",
-    "6",
-    "5",
-    "6",
-    "6",
-    "6"
-  ],
-  "D#m6": [
-    "X",
-    "6",
-    "4",
-    "5",
-    "4",
-    "6"
-  ],
-  "D#m7": [
-    "X",
-    "6",
-    "8",
-    "6",
-    "7",
-    "6"
-  ],
-  "D#maj7": [
-    "X",
-    "6",
-    "8",
-    "7",
-    "8",
-    "6"
-  ],
-  "D#dim": [
-    "X",
-    "6",
-    "7",
-    "8",
-    "7",
-    "X"
-  ],
-  "D#+": [
-    "X",
-    "6",
-    "5",
-    "4",
-    "4",
-    "3"
-  ],
-  "D#sus": [
-    "X",
-    "6",
-    "8",
-    "8",
-    "9",
-    "6"
-  ],
-  "Gb": [
-    "2",
-    "4",
-    "4",
-    "3",
-    "2",
-    "2"
-  ],
-  "Gbm": [
-    "2",
-    "4",
-    "4",
-    "2",
-    "2",
-    "2"
-  ],
-  "F#6": [
-    "2",
-    "X",
-    "1",
-    "3",
-    "2",
-    "2"
-  ],
-  "Gb7": [
-    "2",
-    "4",
-    "2",
-    "3",
-    "2",
-    "2"
-  ],
-  "Gb9": [
-    "2",
-    "X",
-    "2",
-    "1",
-    "2",
-    "2"
-  ],
-  "Gbm6": [
-    "2",
-    "X",
-    "1",
-    "2",
-    "2",
-    "2"
-  ],
-  "Gbm7": [
-    "2",
-    "4",
-    "2",
-    "2",
-    "2",
-    "2"
-  ],
-  "F#maj7": [
-    "2",
-    "X",
-    "3",
-    "3",
-    "2",
-    "1"
-  ],
-  "Gbdim": [
-    "2",
-    "X",
-    "1",
-    "2",
-    "1",
-    "2"
-  ],
-  "F#+": [
-    "2",
-    "X",
-    "4",
-    "3",
-    "3",
-    "2"
-  ],
-  "F#sus": [
-    "2",
-    "4",
-    "4",
-    "4",
-    "2",
-    "2"
-  ]
-};
-
-const ENHARMONIC_CHORD_ALIASES = {
-  // Flat-key chords that map to their sharp-key equivalents already in the dict
-  'Cb': 'B',
-  'Cbm': 'Bm',
-  'Cb6': 'B6',
-  'Cb7': 'B7',
-  'Cb9': 'B9',
-  'Cbm6': 'Bm6',
-  'Cbm7': 'Bm7',
-  'Cbmaj7': 'Bmaj7',
-  'Cbdim': 'Bdim',
-  'Cb+': 'B+',
-  'Cbsus': 'Bsus',
-  'Fb': 'E',
-  'Fbm': 'Em',
-  'Fb6': 'E6',
-  'Fb7': 'E7',
-  'Fb9': 'E9',
-  'Fbm6': 'Em6',
-  'Fbm7': 'Em7',
-  'Fbmaj7': 'Emaj7',
-  'Fbdim': 'Edim',
-  'Fb+': 'E+',
-  'Fbsus': 'Esus',
-  'Abm': 'G#m',
-  'Abm6': 'G#m6',
-  'Abm7': 'G#m7',
-  'Abdim': 'G#dim',
-  'Dbm': 'C#m',
-  'Dbm6': 'C#m6',
-  'Dbm7': 'C#m7',
-  'Ebm': 'D#m',
-  'Ebm6': 'D#m6',
-  'Ebm7': 'D#m7',
-  'Gbm': 'F#m',
-  'Gbm6': 'F#m6',
-  'Gbm7': 'F#m7',
-  'G#': 'Ab',
-  'A#': 'Bb',
-};
 
 export function renderChordDiagram(chordName) {
-  // Try direct lookup, then enharmonic alias, then return chord name as fallback
-  let strings = CHORD_DICT[chordName];
-  if (!strings) {
-    const alias = ENHARMONIC_CHORD_ALIASES[chordName];
-    strings = alias ? CHORD_DICT[alias] : null;
-  }
+  const strings = getChordFingering(chordName);
   if (!strings) {
     return `<div style="padding:20px;text-align:center;">${chordName}</div>`;
   }
@@ -1837,27 +522,37 @@ export function initKeyboardNavigation() {
     }
   });
 }
-
 /**
  * Resolve a chord name to its fingering array, checking the dict and enharmonic aliases.
  * Exposed globally so guitarAudio.js can access it.
- * @param {string} chordName
- * @returns {string[]|null}
  */
 function getChordFingeringInternal(chordName) {
   let strings = CHORD_DICT[chordName];
+
   if (!strings) {
     const alias = ENHARMONIC_CHORD_ALIASES[chordName];
     strings = alias ? CHORD_DICT[alias] : null;
   }
+
   return strings || null;
 }
 
-// Expose chord detail function globally for onclick handlers in rendered HTML
+// Expose chord detail function globally
 window.__showChordDetail = showChordDetail;
 
 // Expose chord fingering lookup for guitarAudio.js using a different internal name
 window.__getChordFingering = getChordFingeringInternal;
+// Event delegation for chord buttons (avoids inline onclick blocked by CSP)
+document.addEventListener('click', (e) => {
+  const btn = e.target.closest('.progression-chord-btn, .related-chord-btn');
+  if (!btn) return;
+  const chord = btn.getAttribute('data-chord');
+  const roman = btn.getAttribute('data-roman');
+  const key = btn.getAttribute('data-key');
+  if (chord && roman && key) {
+    showChordDetail(chord, roman, key);
+  }
+});
 
 // --- Guitar Audio Hover ---
 

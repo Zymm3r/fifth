@@ -6,6 +6,7 @@
  */
 
 import PROGRESSIONS from '../data/progressions.js';
+import { FLAT_KEYS, ENHARMONIC_TO_FLAT, ENHARMONIC_TO_SHARP, getChromaticForKey } from './noteConstants.js';
 
 /**
  * Chord quality mapping for Roman numerals in major keys.
@@ -30,40 +31,8 @@ const CHORD_QUALITY_MAP = {
   'vii°': { interval: 11, quality: 'dim' }
 };
 
-// Chromatic scale for reference
-const CHROMATIC = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
-const CHROMATIC_FLAT = ['C', 'Db', 'D', 'Eb', 'E', 'F', 'Gb', 'G', 'Ab', 'A', 'Bb', 'B'];
-
-// Which keys prefer flats vs sharps
-const FLAT_KEYS = ['F', 'Bb', 'Eb', 'Ab', 'Db', 'Gb'];
-const SHARP_KEYS = ['G', 'D', 'A', 'E', 'B', 'F#', 'C#'];
-
-/**
- * Enharmonic equivalents for forcing flat/sharp spellings.
- * Maps a note to its flat equivalent if it has one.
- */
-const ENHARMONIC_TO_FLAT = {
-  'C#': 'Db', 'D#': 'Eb', 'F#': 'Gb', 'G#': 'Ab', 'A#': 'Bb'
-};
-
-/**
- * Enharmonic equivalents for forcing sharp spellings.
- */
-const ENHARMONIC_TO_SHARP = {
-  'Db': 'C#', 'Eb': 'D#', 'Gb': 'F#', 'Ab': 'G#', 'Bb': 'A#'
-};
-
 /** @type {Map<string, string[]>} Memoization cache for transposed progressions */
 const transpositionCache = new Map();
-
-/**
- * Get the chromatic array appropriate for a given key.
- * @param {string} key - Root key
- * @returns {string[]}
- */
-function getChromaticForKey(key) {
-  return FLAT_KEYS.includes(key) ? CHROMATIC_FLAT : CHROMATIC;
-}
 
 /**
  * Regex to parse a Roman numeral into three parts:
@@ -180,13 +149,16 @@ function transposeRomanNumeral(romanNumeral, key) {
   const chordInfo = CHORD_QUALITY_MAP[baseRoman];
 
   if (!chordInfo) {
-    // If completely unrecognized, return as-is
+    console.warn(`[progressionTransposer] Unrecognized Roman numeral "${baseRoman}" (from "${romanNumeral}") — returning as-is`);
     return romanNumeral;
   }
 
   const chromatic = getChromaticForKey(key);
   const keyIndex = chromatic.indexOf(key);
-  if (keyIndex === -1) return romanNumeral;
+  if (keyIndex === -1) {
+    console.warn(`[progressionTransposer] Key "${key}" not found in chromatic scale — returning "${romanNumeral}" untransposed`);
+    return romanNumeral;
+  }
 
   // Compute the root note index: key root + interval + accidental offset
   const noteIndex = (keyIndex + chordInfo.interval + accidentalOffset + 12) % 12;
@@ -240,6 +212,7 @@ function transposeProgression(progressionId, key) {
 
   const progression = PROGRESSIONS.find(p => p.id === progressionId);
   if (!progression) {
+    console.warn(`[progressionTransposer] Progression "${progressionId}" not found in database`);
     return { chords: [], romanNumerals: [] };
   }
 
