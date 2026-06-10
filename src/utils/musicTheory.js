@@ -4,6 +4,8 @@
  * secondary dominants, and chord function analysis.
  */
 
+import { ENHARMONIC_MAP } from './noteConstants.js';
+
 /**
  * @typedef {'tonic'|'subdominant'|'dominant'|'predominant'} ChordFunction
  */
@@ -21,11 +23,8 @@
 // Circle of fifths order (clockwise)
 const CIRCLE_ORDER = ['C', 'G', 'D', 'A', 'E', 'B', 'F#', 'C#', 'G#', 'D#', 'A#', 'E#', 'F', 'Bb', 'Eb', 'Ab', 'Db', 'Gb', 'Cb'];
 
-// Practical enharmonic equivalents
-const ENHARMONIC = {
-  'F#': 'Gb', 'C#': 'Db', 'G#': 'Ab', 'D#': 'Eb', 'A#': 'Bb', 'E#': 'F', 'B#': 'C',
-  'Gb': 'F#', 'Db': 'C#', 'Ab': 'G#', 'Eb': 'D#', 'Bb': 'A#'
-};
+// Re-export the shared enharmonic map for backward compatibility
+const ENHARMONIC = ENHARMONIC_MAP;
 
 // Major keys and their relative minors
 const RELATIVE_MINOR = {

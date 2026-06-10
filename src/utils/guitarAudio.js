@@ -4,6 +4,8 @@
  * Uses a PolySynth configured to sound like a clean guitar.
  */
 
+import { CHROMATIC_SHARP } from './noteConstants.js';
+
 /**
  * Standard guitar tuning MIDI notes (strings 6→1 = low E → high E).
  * @type {number[]}
@@ -35,10 +37,9 @@ function fretToMidi(stringIndex, fretStr) {
  * @returns {string}
  */
 function midiToNote(midi) {
-  const noteNames = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
   const octave = Math.floor(midi / 12) - 1;
   const noteIndex = midi % 12;
-  return noteNames[noteIndex] + octave;
+  return CHROMATIC_SHARP[noteIndex] + octave;
 }
 
 /**
