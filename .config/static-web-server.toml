@@ -9,7 +9,7 @@ log-remote-address = false
 directory-listing = false
 cache-control-headers = false
 
-cors-allow-origins = "*"
+cors-allow-origins = ""
 index-files = "index.html"
 
 ignore-hidden-files = true
@@ -23,3 +23,7 @@ source = "**"
 Cache-Control = "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0"
 Pragma = "no-cache"
 Expires = "0"
+X-Content-Type-Options = "nosniff"
+X-Frame-Options = "DENY"
+Referrer-Policy = "strict-origin-when-cross-origin"
+Permissions-Policy = "camera=(), microphone=(), geolocation=()"

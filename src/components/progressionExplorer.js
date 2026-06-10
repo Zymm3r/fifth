@@ -12,6 +12,16 @@ import { getRelativeKey, getParallelKey, getCircleNeighbors, getChordFunction, g
 import { getBarreChordInfo } from '../data/barreChords.js';
 import { ensureAudioStarted, playChordStrum, stopAllNotes } from '../utils/guitarAudio.js';
 
+/**
+ * Escape a string for safe insertion into HTML attributes.
+ * Prevents DOM XSS via attribute injection.
+ * @param {string} str
+ * @returns {string}
+ */
+function escapeAttr(str) {
+  return String(str).replace(/&/g, '&amp;').replace(/'/g, '&#39;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
 /** @type {string|null} Currently focused chord for accessibility */
 let focusedChordId = null;
 
@@ -78,22 +88,22 @@ function renderProgressions(key) {
     const songData = SONG_EXAMPLES.find(s => s.progressionId === progression.id);
     const chordDisplay = chords.map((chord, idx) => `
       <button class="progression-chord-btn" 
-              data-chord="${chord}" 
-              data-roman="${romanNumerals[idx]}"
-              data-progression-id="${progression.id}"
-              aria-label="${chord} chord"
+              data-chord="${escapeAttr(chord)}" 
+              data-roman="${escapeAttr(romanNumerals[idx])}"
+              data-progression-id="${escapeAttr(progression.id)}"
+              aria-label="${escapeAttr(chord)} chord"
               tabindex="0"
-              onclick="window.__showChordDetail('${chord}', '${romanNumerals[idx]}', '${key}')">
-        <span class="chord-name">${chord}</span>
+              onclick="window.__showChordDetail('${escapeAttr(chord)}', '${escapeAttr(romanNumerals[idx])}', '${escapeAttr(key)}')">
+        <span class="chord-name">${escapeAttr(chord)}</span>
         <span class="chord-svg">${renderChordDiagram(chord)}</span>
       </button>
     `).join('');
 
     const songList = songData?.songs?.slice(0, 3).map(s => `
-      <li class="song-example" title="${s.album ? `Album: ${s.album}` : ''}">
-        <span class="song-title">${s.title}</span>
-        <span class="song-artist">${s.artist}</span>
-        ${s.year ? `<span class="song-year">(${s.year})</span>` : ''}
+      <li class="song-example" title="${s.album ? `Album: ${escapeAttr(s.album)}` : ''}">
+        <span class="song-title">${escapeAttr(s.title)}</span>
+        <span class="song-artist">${escapeAttr(s.artist)}</span>
+        ${s.year ? `<span class="song-year">(${escapeAttr(String(s.year))})</span>` : ''}
       </li>
     `).join('') || '<li class="song-example--none">No examples loaded</li>';
 
@@ -273,9 +283,9 @@ export function showChordDetail(chordName, romanNumeral, key) {
         <div class="chord-detail__related-list">
           ${relatedChords.map(c => `
             <button class="related-chord-btn" 
-                    onclick="window.__showChordDetail('${c}', '${romanNumeral}', '${key}')"
-                    aria-label="Show details for ${c}">
-              ${c}
+                    onclick="window.__showChordDetail('${escapeAttr(c)}', '${escapeAttr(romanNumeral)}', '${escapeAttr(key)}')"
+                    aria-label="Show details for ${escapeAttr(c)}">
+              ${escapeAttr(c)}
             </button>
           `).join('')}
         </div>
