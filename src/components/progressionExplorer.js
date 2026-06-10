@@ -593,12 +593,10 @@ export function setupPopupChordHoverListeners() {
     document.removeEventListener('mouseleave', popupChordLeaveHandler, true);
   }
 
-  // สร้างฟังก์ชันดักจับตอนเมาส์วาง (Hover)
-  popupChordHoverHandler = async (e) => {
-    // เปลี่ยนเป้าหมายจากคลาสเดิม มาเช็ก ID #playChordBtn แทน
-    const btn = e.target && typeof e.target.closest === 'function'
-      ? e.target.closest('#playChordBtn')
-      : e.target.parentElement?.closest('#playChordBtn');
+  // Create the mouseenter handler
+  chordHoverHandler = async (e) => {
+    // Find the closest chord button from the hover target
+    const btn = e.target.closest('.progression-chord-btn');
     if (!btn) return;
 
     // เปิดระบบเสียงในจังหวะเริ่มโฮเวอร์
@@ -620,11 +618,9 @@ export function setupPopupChordHoverListeners() {
     }
   };
 
-  // สร้างฟังก์ชันดักจับตอนเมาส์ออก
-  popupChordLeaveHandler = (e) => {
-    const btn = e.target && typeof e.target.closest === 'function'
-      ? e.target.closest('#playChordBtn')
-      : e.target.parentElement?.closest('#playChordBtn');
+  // Create the mouseleave handler
+  chordLeaveHandler = (e) => {
+    const btn = e.target.closest('.progression-chord-btn');
     if (!btn) return;
     // ปล่อยให้เสียงกังวานจบเองตามธรรมชาติ
   };
