@@ -554,93 +554,100 @@ document.addEventListener('click', (e) => {
   }
 });
 
-// --- Guitar Audio Hover ---
+// --- Guitar Audio Popup Hover ---
 
-/** @type {boolean} Whether audio initialization has been attempted */
-let audioInitDone = false;
+/** @type {boolean} Whether popup audio initialization has been attempted */
+let popupAudioInitDone = false;
 
 /**
- * Initialize audio on first user interaction (required by browser autoplay policy).
- * This function must be called from within a user gesture event listener.
+ * Initialize audio on first user interaction for popup.
  */
-async function onFirstInteraction() {
-  if (audioInitDone) return;
-  audioInitDone = true;
+async function onPopupFirstInteraction() {
+  if (popupAudioInitDone) return;
+  popupAudioInitDone = true;
   try {
-    await ensureAudioStarted();
+    if (typeof ensureAudioStarted === 'function') {
+      await ensureAudioStarted();
+    }
   } catch (e) {
-    console.warn('Failed to initialize audio on first interaction:', e);
+    console.warn('Failed to initialize audio on popup first interaction:', e);
   }
 }
 
-/** @type {function|null} Stored mouseenter handler for cleanup */
-let chordHoverHandler = null;
+/** @type {function|null} Stored mouseenter handler for popup cleanup */
+let popupChordHoverHandler = null;
 
-/** @type {function|null} Stored mouseleave handler for cleanup */
-let chordLeaveHandler = null;
+/** @type {function|null} Stored mouseleave handler for popup cleanup */
+let popupChordLeaveHandler = null;
 
 /**
- * Set up audio hover event listeners for chord buttons.
- * This ensures audio plays when hovering over button.progression-chord-btn elements.
+ * Set up audio hover event listeners for the popup play button (#playChordBtn).
  * @returns {void}
  */
-export function setupChordHoverListeners() {
-  // Remove existing listeners if they exist to prevent duplicates
-  if (chordHoverHandler) {
-    document.removeEventListener('mouseenter', chordHoverHandler, true);
+export function setupPopupChordHoverListeners() {
+  // ลบ Listener เก่าออกก่อนเพื่อป้องกันเสียงซ้อน
+  if (popupChordHoverHandler) {
+    document.removeEventListener('mouseenter', popupChordHoverHandler, true);
   }
-  if (chordLeaveHandler) {
-    document.removeEventListener('mouseleave', chordLeaveHandler, true);
+  if (popupChordLeaveHandler) {
+    document.removeEventListener('mouseleave', popupChordLeaveHandler, true);
   }
 
-  // Create the mouseenter handler
-  chordHoverHandler = async (e) => {
-    // Find the closest chord button from the hover target
-    const btn = e.target.closest('.progression-chord-btn');
+  // สร้างฟังก์ชันดักจับตอนเมาส์วาง (Hover)
+  popupChordHoverHandler = async (e) => {
+    // เปลี่ยนเป้าหมายจากคลาสเดิม มาเช็ก ID #playChordBtn แทน
+    const btn = e.target && typeof e.target.closest === 'function'
+      ? e.target.closest('#playChordBtn')
+      : e.target.parentElement?.closest('#playChordBtn');
     if (!btn) return;
 
-    // Ensure audio context is running (async but non-blocking)
-    onFirstInteraction();
+    // เปิดระบบเสียงในจังหวะเริ่มโฮเวอร์
+    onPopupFirstInteraction();
 
-    // Extract chord name from data-chord attribute
-    const chordName = btn.getAttribute('data-chord');
-    if (chordName) {
+    // 1. ดึงชื่อคอร์ดจาก data-chord ของปุ่มก่อน
+    let chordName = btn.getAttribute('data-chord');
+    
+    // 2. ถ้าที่ปุ่มไม่มี ให้วิ่งไปหาจากตัวกล่องพ็อพพัพ (#chordPopup) หรือข้อความหัวคอร์ดแทน
+    if (!chordName) {
+      const popup = document.getElementById('chordPopup');
+      chordName = popup?.getAttribute('data-chord') 
+               || popup?.querySelector('h3, .popup-title, .chord-title')?.textContent?.trim();
+    }
+
+    // สั่งเล่นเสียงสตรัมกีตาร์
+    if (chordName && typeof playChordStrum === 'function') {
       playChordStrum(chordName);
     }
   };
 
-  // Create the mouseleave handler
-  chordLeaveHandler = (e) => {
-    const btn = e.target.closest('.progression-chord-btn');
+  // สร้างฟังก์ชันดักจับตอนเมาส์ออก
+  popupChordLeaveHandler = (e) => {
+    const btn = e.target && typeof e.target.closest === 'function'
+      ? e.target.closest('#playChordBtn')
+      : e.target.parentElement?.closest('#playChordBtn');
     if (!btn) return;
-    // Let notes ring out naturally (no abrupt stop)
+    // ปล่อยให้เสียงกังวานจบเองตามธรรมชาติ
   };
 
-  // Add listeners with capture phase to ensure we catch events before they bubble
-  document.addEventListener('mouseenter', chordHoverHandler, true);
-  document.addEventListener('mouseleave', chordLeaveHandler, true);
+  // ลงทะเบียน Event เข้าสู่ระบบแบบ Capture Phase ตามโครงสร้างเดิมของคุณ
+  document.addEventListener('mouseenter', popupChordHoverHandler, true);
+  document.addEventListener('mouseleave', popupChordLeaveHandler, true);
 }
 
 /**
- * Clean up hover event listeners.
- * Call this when the component is destroyed to prevent memory leaks.
+ * Clean up popup hover event listeners to prevent memory leaks.
  * @returns {void}
  */
-export function cleanupChordHoverListeners() {
-  if (chordHoverHandler) {
-    document.removeEventListener('mouseenter', chordHoverHandler, true);
-    chordHoverHandler = null;
+export function cleanupPopupChordHoverListeners() {
+  if (popupChordHoverHandler) {
+    document.removeEventListener('mouseenter', popupChordHoverHandler, true);
+    popupChordHoverHandler = null;
   }
-  if (chordLeaveHandler) {
-    document.removeEventListener('mouseleave', chordLeaveHandler, true);
-    chordLeaveHandler = null;
+  if (popupChordLeaveHandler) {
+    document.removeEventListener('mouseleave', popupChordLeaveHandler, true);
+    popupChordLeaveHandler = null;
   }
 }
 
-// Set up hover listeners when module loads
-setupChordHoverListeners();
-
-// Also ensure audio context on first click anywhere (async handler)
-document.addEventListener('click', async () => {
-  await onFirstInteraction();
-}, { once: true });
+// เปิดรันระบบดักจับทันทีเมื่อโหลดโมดูล
+setupPopupChordHoverListeners();
