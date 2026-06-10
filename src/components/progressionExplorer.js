@@ -1713,6 +1713,8 @@ const ENHARMONIC_CHORD_ALIASES = {
   'Gbm': 'F#m',
   'Gbm6': 'F#m6',
   'Gbm7': 'F#m7',
+  'G#': 'Ab',
+  'A#': 'Bb',
 };
 
 export function renderChordDiagram(chordName) {

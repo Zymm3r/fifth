@@ -76,7 +76,7 @@ function getChromaticForKey(key) {
  *   - Lowercase: i, ii, iii, iv, v, vi, vii
  *   - With optional ° variant: vii° (handled separately)
  */
-const ROMAN_NUMERAL_REGEX = /^([#♯b♭]?)(I{1,3}|IV|V|VI{1,2}|VII?|i{1,3}|iv|v|vi{1,2}|vii)(.*)$/;
+const ROMAN_NUMERAL_REGEX = /^([#♯b♭]?)(VII|VI|IV|V|I{1,3}|vii|vi|iv|v|i{1,3})(.*)$/;
 
 /**
  * Parse a Roman numeral to extract the accidental prefix, base numeral,
@@ -112,7 +112,7 @@ function parseRomanNumeral(roman) {
     suffix = cleaned.slice(4);
   } else {
     // Match the base Roman numeral (I-VII or i-vii) followed by optional suffix
-    const match = cleaned.match(/^(I{1,3}|IV|V|VI{1,2}|VII?|i{1,3}|iv|v|vi{1,2}|vii)(.*)$/);
+    const match = cleaned.match(/^(VII|VI|IV|V|I{1,3}|vii|vi|iv|v|i{1,3})(.*)$/);
     if (match) {
       baseRoman = match[1];
       suffix = match[2];
