@@ -25,7 +25,7 @@ import { NOTE_INDEX_MAP, CHROMATIC_SHARP } from '../utils/noteConstants.js';
  */
 function parseBarreChord(chordName) {
   // Extract root note (handle sharps/flats)
-  const match = chordName.match(/^([A-G][#b]?)(m|dim|aug|sus[24]?|7|maj7|m7|dim7)?.*$/);
+  const match = chordName.match(/^([A-G][#b]?)(maj7|m7|m6|dim7|dim|aug|sus[24]?|7|m)?.*$/);
   if (!match) return null;
 
   const rootNote = match[1];
@@ -122,7 +122,11 @@ function getBarreChordInfo(chordName) {
   const parsed = parseBarreChord(chordName);
   if (!parsed) return null;
 
-  const quality = parsed.quality === 'm' ? 'minor' : 'major';
+  const quality = parsed.quality.startsWith('m') && !parsed.quality.startsWith('maj')
+    ? 'minor'
+    : parsed.quality.includes('dim')
+      ? 'dim'
+      : 'major';
   const notes = getChordNotes(parsed.rootNote, quality);
   const intervals = getChordIntervals(quality);
 

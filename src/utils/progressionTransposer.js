@@ -138,8 +138,22 @@ function applySuffix(baseChord, suffix, isMinorBase) {
 function transposeRomanNumeral(romanNumeral, key) {
   // Handle secondary dominants (e.g., V/ii)
   if (romanNumeral.includes('/')) {
-    const [primary] = romanNumeral.split('/');
-    // Transpose the primary part using the key (this is a simplification)
+    const [primary, target] = romanNumeral.split('/');
+    const targetChord = transposeRomanNumeral(target, key);
+    const targetRootMatch = targetChord.match(/^[A-G][#b]?/);
+
+    // For the common V/x case, build the dominant of the target chord.
+    if (primary.toUpperCase() === 'V' && targetRootMatch) {
+      const chromatic = getChromaticForKey(key);
+      const targetRoot = targetRootMatch[0];
+      const targetIndex = chromatic.indexOf(targetRoot);
+
+      if (targetIndex !== -1) {
+        return chromatic[(targetIndex + 7) % 12];
+      }
+    }
+
+    // Fall back to transposing the primary symbol in the current key.
     return transposeRomanNumeral(primary, key);
   }
 
