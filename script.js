@@ -108,6 +108,11 @@ async function initAudioOnInteraction() {
   }
 }
 
+// Unlock audio context on first click/tap/keypress anywhere on the page
+['pointerdown', 'keydown'].forEach(evt => {
+  document.addEventListener(evt, initAudioOnInteraction, { once: true });
+});
+
 /**
  * Play a chord strum with debounce (prevents rapid-fire audio).
  * @param {string} chordName - The chord to play
