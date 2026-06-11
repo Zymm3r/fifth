@@ -11,8 +11,6 @@ import { getAllTransposedProgressions, transposeProgression } from '../utils/pro
 import { getRelativeKey, getParallelKey, getCircleNeighbors, getChordFunction, getScaleDegreeName, getSecondaryDominant } from '../utils/musicTheory.js';
 import { getBarreChordInfo } from '../data/barreChords.js';
 import { initializeAudio, playGuitarChord, playProgression, stopProgression } from '../utils/audioPlayer.js';
-
-import { ensureAudioStarted, playChordStrum, stopAllNotes } from '../utils/guitarAudio.js';
 import { getChordFingering } from '../utils/chordLookup.js';
 import { ENHARMONIC_MAP } from '../utils/noteConstants.js';
 
@@ -45,10 +43,6 @@ let focusedChordId = null;
 
 /** @type {string} Current active key */
 let currentKey = 'C';
-
-// Unlock audio on first user interaction
-document.addEventListener('pointerdown', initializeAudio, { once: true });
-
 
 /**
  * Initialize the progression explorer panel.
@@ -361,6 +355,20 @@ function closeChordModal() {
 }
 
 /**
+ * Start the progression audio engine from a click handler before playing sound.
+ * @returns {Promise<boolean>}
+ */
+async function ensureProgressionAudioReady() {
+  try {
+    await initializeAudio();
+    return true;
+  } catch (e) {
+    console.error('[progressionExplorer] Failed to initialize progression audio:', e);
+    return false;
+  }
+}
+
+/**
  * Handle click on modal overlay background to close.
  * @param {MouseEvent} e
  */
@@ -546,6 +554,50 @@ export function initKeyboardNavigation() {
 
 // Event delegation for chord buttons (avoids inline onclick blocked by CSP)
 document.addEventListener('click', (e) => {
+  const playProgressionBtn = safeClosest(e.target, '.play-progression-btn');
+  if (playProgressionBtn) {
+    e.preventDefault();
+    const progressionId = playProgressionBtn.getAttribute('data-progression-id');
+    const progressionData = getAllTransposedProgressions(currentKey)
+      .find(({ progression }) => progression.id === progressionId);
+
+    if (!progressionData) {
+      console.warn(`[progressionExplorer] Progression "${progressionId}" not found for key "${currentKey}"`);
+      return;
+    }
+
+    ensureProgressionAudioReady().then((ready) => {
+      if (!ready) return;
+      const chordsToPlay = progressionData.chords.map(chordName => ({
+        chordName,
+        strings: getChordFingering(chordName) || [],
+      })).filter(chord => chord.strings.length === 6);
+
+      if (chordsToPlay.length > 0) {
+        playProgression(chordsToPlay);
+      }
+    });
+    return;
+  }
+
+  const modalPlayBtn = safeClosest(e.target, '#modalPlayChordBtn');
+  if (modalPlayBtn) {
+    e.preventDefault();
+    const titleEl = document.getElementById('chordModalTitle');
+    const chordName = titleEl?.childNodes?.[0]?.textContent?.trim() || '';
+    const strings = getChordFingering(chordName);
+
+    if (!strings) {
+      console.warn(`[progressionExplorer] No fingering found for modal chord "${chordName}"`);
+      return;
+    }
+
+    ensureProgressionAudioReady().then((ready) => {
+      if (ready) playGuitarChord(chordName, strings);
+    });
+    return;
+  }
+
   const btn = safeClosest(e.target, '.progression-chord-btn, .related-chord-btn');
   if (!btn) return;
   const chord = btn.getAttribute('data-chord');
