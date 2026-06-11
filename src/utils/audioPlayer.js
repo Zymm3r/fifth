@@ -218,7 +218,7 @@ export function playGuitarChord(chordName, chordDict, direction = 'down', time =
 let currentProgressionEvents = [];
 
 /**
- * Play a chord progression using Tone.Transport at 100 BPM.
+ * Play a chord progression using Tone.Transport at 130 BPM.
  * @param {Array<{chordName: string, strings: string[]}>} chords
  */
 export function playProgression(chords) {
@@ -226,8 +226,8 @@ export function playProgression(chords) {
 
   stopProgression();
 
-  Tone.Transport.bpm.value = 100;
-  const barDuration = 4 / (100 / 60); // 4 beats at 100 BPM
+  Tone.Transport.bpm.value = 130;
+  const barDuration = 4 / (130 / 60); // 4 beats at 130 BPM
 
   chords.forEach((chordData, index) => {
     const eventId = Tone.Transport.schedule((time) => {
