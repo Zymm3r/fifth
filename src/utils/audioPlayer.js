@@ -226,8 +226,8 @@ export function playProgression(chords) {
 
   stopProgression();
 
-  Tone.Transport.bpm.value = 130;
-  const barDuration = 4 / (130 / 60); // 4 beats at 130 BPM
+  Tone.Transport.bpm.value = 150;
+  const barDuration = 4 / (150 / 60); // 4 beats at 130 BPM
 
   chords.forEach((chordData, index) => {
     const eventId = Tone.Transport.schedule((time) => {
