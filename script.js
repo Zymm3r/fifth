@@ -1,6 +1,15 @@
 import { initProgressionExplorer, updateExplorerForKey } from './src/components/progressionExplorer.js';
 import { CIRCLE_OF_FIFTHS_KEYS } from './src/utils/noteConstants.js';
-import { ensureAudioStarted, playChordStrum } from './src/utils/guitarAudio.js';
+import { initializeAudio, playGuitarChord } from './src/utils/audioPlayer.js';
+import { getChordFingering } from './src/utils/chordLookup.js';
+
+function safeClosest(target, selector) {
+  if (!target) return null;
+  let el = target.nodeType === 3 ? target.parentElement : target;
+  if (!el || typeof el.closest !== 'function') return null;
+  return el.closest(selector);
+}
+
 
 const keys = CIRCLE_OF_FIFTHS_KEYS;
 
@@ -92,10 +101,8 @@ let hoverDebounceTimer = null;
 async function initAudioOnInteraction() {
   if (audioReady) return;
   try {
-    const started = await ensureAudioStarted();
-    if (started) {
-      audioReady = true;
-    }
+    await initializeAudio();
+    audioReady = true;
   } catch (e) {
     console.warn('[script] Failed to initialize audio:', e);
   }
@@ -111,7 +118,8 @@ function playChordWithDebounce(chordName) {
   }
   hoverDebounceTimer = setTimeout(() => {
     if (audioReady) {
-      playChordStrum(chordName);
+      const strings = getChordFingering(chordName);
+      if (strings) playGuitarChord(chordName, strings);
     }
     hoverDebounceTimer = null;
   }, 120);
@@ -119,7 +127,7 @@ function playChordWithDebounce(chordName) {
 
 // Event delegation for hover-to-play on diatonic chords (#chordList)
 document.addEventListener('mouseenter', async (e) => {
-  const chordDiv = e.target.closest('#chordList .chord');
+  const chordDiv = safeClosest(e.target, '#chordList .chord');
   if (!chordDiv) return;
 
   // Initialize audio on first hover (user gesture)
