@@ -1,5 +1,6 @@
 import { initProgressionExplorer, updateExplorerForKey } from './src/components/progressionExplorer.js';
 import { CIRCLE_OF_FIFTHS_KEYS } from './src/utils/noteConstants.js';
+import { ensureAudioStarted, playChordStrum } from './src/utils/guitarAudio.js';
 
 const keys = CIRCLE_OF_FIFTHS_KEYS;
 
@@ -33,6 +34,20 @@ const scaleByKey = {
   "F": "F G A Bb C D E"
 };
 
+// ─────────────────────────────────────────────────────────
+// Axis Progression Color System
+// Maps each scale degree (0-6) to its harmonic function
+// ─────────────────────────────────────────────────────────
+const AXIS_COLORS = [
+  { roman: 'I',    fn: 'tonic',        label: 'Tonic' },
+  { roman: 'ii',   fn: 'predominant',  label: 'Predominant' },
+  { roman: 'iii',  fn: 'tonic',        label: 'Tonic' },
+  { roman: 'IV',   fn: 'predominant',  label: 'Predominant' },
+  { roman: 'V',    fn: 'dominant',     label: 'Dominant' },
+  { roman: 'vi',   fn: 'tonic',        label: 'Tonic' },
+  { roman: 'vii°', fn: 'dominant',     label: 'Dominant' }
+];
+
 // Render Circle
 const circle = document.getElementById("circle");
 keys.forEach((key, i) => {
@@ -60,7 +75,66 @@ document.getElementById("randomBtn").onclick = () => {
   updateKey(randomKey);
 };
 
+// ─────────────────────────────────────────────────────────
+// Hover-to-Play Audio for Diatonic Chord Buttons
+// ─────────────────────────────────────────────────────────
+
+/** @type {boolean} Whether audio has been initialized */
+let audioReady = false;
+
+/** @type {number|null} Debounce timer for chord hover */
+let hoverDebounceTimer = null;
+
+/**
+ * Initialize audio on first user interaction.
+ * Must be triggered from a genuine user gesture event.
+ */
+async function initAudioOnInteraction() {
+  if (audioReady) return;
+  try {
+    const started = await ensureAudioStarted();
+    if (started) {
+      audioReady = true;
+    }
+  } catch (e) {
+    console.warn('[script] Failed to initialize audio:', e);
+  }
+}
+
+/**
+ * Play a chord strum with debounce (prevents rapid-fire audio).
+ * @param {string} chordName - The chord to play
+ */
+function playChordWithDebounce(chordName) {
+  if (hoverDebounceTimer) {
+    clearTimeout(hoverDebounceTimer);
+  }
+  hoverDebounceTimer = setTimeout(() => {
+    if (audioReady) {
+      playChordStrum(chordName);
+    }
+    hoverDebounceTimer = null;
+  }, 120);
+}
+
+// Event delegation for hover-to-play on diatonic chords (#chordList)
+document.addEventListener('mouseenter', async (e) => {
+  const chordDiv = e.target.closest('#chordList .chord');
+  if (!chordDiv) return;
+
+  // Initialize audio on first hover (user gesture)
+  await initAudioOnInteraction();
+
+  // Extract chord name from the bold text
+  const chordName = chordDiv.querySelector('b')?.textContent?.trim();
+  if (chordName) {
+    playChordWithDebounce(chordName);
+  }
+}, true);
+
+// ─────────────────────────────────────────────────────────
 // Update Display
+// ─────────────────────────────────────────────────────────
 function updateKey(key) {
   if (!chordsByKey[key]) {
     console.error(`[script] Invalid key "${key}" — not found in chord database`);
@@ -75,16 +149,37 @@ function updateKey(key) {
     el.style.backgroundColor = el.innerText === key ? "#f5d7a0" : "#f9f2e4";
   });
 
-  // Update Chords
+  // Update Chords with Axis Progression Colors
   const chords = chordsByKey[key];
   const chordList = document.getElementById("chordList");
   chordList.innerHTML = "";
   chords.forEach((c, i) => {
     const div = document.createElement("div");
-    div.className = "chord";
+    const axisInfo = AXIS_COLORS[i];
+    
+    // Apply Axis color class
+    div.className = `chord chord--${axisInfo.fn}`;
+    div.setAttribute('aria-label', `${c} chord — ${axisInfo.label} (${axisInfo.roman})`);
+    div.setAttribute('data-chord', c);
+    div.setAttribute('tabindex', '0');
+    
+    // Chord name
     const b = document.createElement("b");
     b.textContent = c;
     div.appendChild(b);
+    
+    // Roman numeral label
+    const romanSpan = document.createElement("span");
+    romanSpan.className = "chord__roman";
+    romanSpan.textContent = axisInfo.roman;
+    div.appendChild(romanSpan);
+    
+    // Axis color dot
+    const dot = document.createElement("span");
+    dot.className = `chord__axis-dot chord__axis-dot--${axisInfo.fn}`;
+    dot.title = axisInfo.label;
+    div.appendChild(dot);
+    
     chordList.appendChild(div);
   });
 
@@ -110,4 +205,3 @@ try {
   console.error('[script] Failed to initialize progression explorer:', e);
 }
 updateKey("C");
-

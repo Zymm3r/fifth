@@ -141,6 +141,88 @@ button:hover {
   border-radius: 10px;
   font-weight: bold;
   min-width: 60px;
+  cursor: pointer;
+  transition: background-color 0.25s, box-shadow 0.25s, transform 0.15s;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.chord:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+/* --- Axis Progression Color System --- */
+
+/* Tonic function (I, iii, vi) — Green family */
+.chord--tonic {
+  border-left: 4px solid #4CAF50;
+  background: linear-gradient(135deg, #f9f2e4 0%, #e8f5e9 100%);
+}
+.chord--tonic:hover {
+  background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
+  box-shadow: 0 4px 16px rgba(76, 175, 80, 0.25);
+}
+
+/* Predominant / Subdominant function (ii, IV) — Orange/Amber family */
+.chord--predominant {
+  border-left: 4px solid #FF9800;
+  background: linear-gradient(135deg, #f9f2e4 0%, #fff3e0 100%);
+}
+.chord--predominant:hover {
+  background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%);
+  box-shadow: 0 4px 16px rgba(255, 152, 0, 0.25);
+}
+
+/* Dominant function (V, vii°) — Red family */
+.chord--dominant {
+  border-left: 4px solid #F44336;
+  background: linear-gradient(135deg, #f9f2e4 0%, #ffebee 100%);
+}
+.chord--dominant:hover {
+  background: linear-gradient(135deg, #ffebee 0%, #ffcdd2 100%);
+  box-shadow: 0 4px 16px rgba(244, 67, 54, 0.25);
+}
+
+/* Roman numeral label */
+.chord__roman {
+  display: block;
+  font-size: 0.7rem;
+  font-weight: normal;
+  opacity: 0.7;
+  letter-spacing: 0.5px;
+  margin-top: 2px;
+}
+
+/* Axis color dot indicator */
+.chord__axis-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+  margin-top: 4px;
+  opacity: 0.8;
+}
+.chord__axis-dot--tonic { background-color: #4CAF50; }
+.chord__axis-dot--predominant { background-color: #FF9800; }
+.chord__axis-dot--dominant { background-color: #F44336; }
+
+/* Hover sound indicator */
+.chord::after {
+  content: '🔊';
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  font-size: 0.6rem;
+  opacity: 0;
+  transition: opacity 0.2s;
+  pointer-events: none;
+}
+.chord:hover::after {
+  opacity: 0.7;
 }
 
 .scale {

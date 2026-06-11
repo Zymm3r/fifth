@@ -406,7 +406,7 @@ export function updateExplorerForKey(newKey) {
     }
   }
   // Re-setup hover listeners after DOM update to ensure proper event delegation
-  setupChordHoverListeners();
+  setupPopupChordHoverListeners();
 }
 
 
@@ -594,13 +594,13 @@ export function setupPopupChordHoverListeners() {
   }
 
   // Create the mouseenter handler
-  chordHoverHandler = async (e) => {
+  popupChordHoverHandler = async (e) => {
     // Find the closest chord button from the hover target
     const btn = e.target.closest('.progression-chord-btn');
     if (!btn) return;
 
     // เปิดระบบเสียงในจังหวะเริ่มโฮเวอร์
-    onPopupFirstInteraction();
+    await onPopupFirstInteraction();
 
     // 1. ดึงชื่อคอร์ดจาก data-chord ของปุ่มก่อน
     let chordName = btn.getAttribute('data-chord');
@@ -619,7 +619,7 @@ export function setupPopupChordHoverListeners() {
   };
 
   // Create the mouseleave handler
-  chordLeaveHandler = (e) => {
+  popupChordLeaveHandler = (e) => {
     const btn = e.target.closest('.progression-chord-btn');
     if (!btn) return;
     // ปล่อยให้เสียงกังวานจบเองตามธรรมชาติ
