@@ -41,7 +41,6 @@ const SONG_EXAMPLES = [
     keyExample: "C",
     songs: [
       { title: "Autumn Leaves", artist: "Joseph Kosma", year: 1945, album: "Les Portes de la Nuit", genre: "Jazz" },
-      { title: "Fly Me to the Moon", artist: "Bart Howard", year: 1954, genre: "Jazz Standard" },
       { title: "All the Things You Are", artist: "Jerome Kern", year: 1939, genre: "Jazz Standard" },
       { title: "Misty", artist: "Erroll Garner", year: 1954, genre: "Jazz" },
       // 🇹🇭 Thai Songs
@@ -91,7 +90,6 @@ const SONG_EXAMPLES = [
     keyExample: "C",
     songs: [
       { title: "Earth Angel", artist: "The Penguins", year: 1954, genre: "Doo-Wop" },
-      { title: "Unchained Melody", artist: "The Righteous Brothers", year: 1965, album: "Just Once in My Life", genre: "Blue-Eyed Soul" },
       { title: "Save the Last Dance for Me", artist: "The Drifters", year: 1960, genre: "Doo-Wop" },
       { title: "Stand by Me", artist: "Ben E. King", year: 1961, genre: "Soul" },
       // 🇹🇭 Thai Songs
@@ -117,9 +115,7 @@ const SONG_EXAMPLES = [
     keyExample: "D",
     songs: [
       { title: "Pachelbel Canon in D", artist: "Johann Pachelbel", year: 1680, genre: "Classical" },
-      { title: "Go West", artist: "Pet Shop Boys / Village People", year: 1978, genre: "Disco" },
       { title: "Let It Be (variation)", artist: "The Beatles", year: 1970, album: "Let It Be", genre: "Rock" },
-      { title: "Streets of London", artist: "Ralph McTell", year: 1969, album: "Spiral Staircase", genre: "Folk" },
       // 🇹🇭 Thai Songs
       { title: "ทะเลใจ", artist: "ไมโคร (Micro)", year: 1987, genre: "Thai Pop" },
       { title: "กว่าจะรู้", artist: "Crescendo (เครสเซนโด้)", year: 1994, genre: "Thai Pop Rock" }
