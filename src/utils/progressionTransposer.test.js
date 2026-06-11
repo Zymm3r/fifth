@@ -129,8 +129,12 @@ describe('transposeRomanNumeral — extensions', () => {
 // ---------------------------------------------------------------------------
 describe('transposeRomanNumeral — secondary dominants', () => {
   it('handles V/ii by transposing the primary part', () => {
-    // V/ii → transposes 'V' in key C → G
-    expect(transposeRomanNumeral('V/ii', 'C')).toBe('G');
+    // V/ii in C = the dominant of ii (Dm) = A
+    expect(transposeRomanNumeral('V/ii', 'C')).toBe('A');
+  });
+
+  it('handles V/V by transposing to the dominant of V', () => {
+    expect(transposeRomanNumeral('V/V', 'C')).toBe('D');
   });
 });
 

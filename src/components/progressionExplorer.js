@@ -126,13 +126,13 @@ function renderProgressions(key) {
       </button>
     `).join('');
 
-    const songList = songData?.songs?.slice(0, 3).map(s => `
+    const songItems = songData?.songs?.slice(0, 3).map(s => `
       <li class="song-example" title="${s.album ? `Album: ${escapeAttr(s.album)}` : ''}">
         <span class="song-title">${escapeAttr(s.title)}</span>
         <span class="song-artist">${escapeAttr(s.artist)}</span>
         ${s.year ? `<span class="song-year">(${escapeAttr(String(s.year))})</span>` : ''}
       </li>
-    `).join('') || '<li class="song-example--none">No examples loaded</li>';
+    `).join('');
 
     return `
       <article class="progression-card" role="listitem" aria-label="${progression.name} progression">
@@ -149,10 +149,10 @@ function renderProgressions(key) {
 
         <p class="progression-card__desc">${progression.description}</p>
 
-        ${songList ? `
+        ${songItems ? `
         <div class="progression-card__songs">
           <p class="progression-card__songs-title">🎵 Song Examples</p>
-          <ul class="song-list">${songList}</ul>
+          <ul class="song-list">${songItems}</ul>
           ${songData?.songs?.length > 3 ? `<p class="song-list__more">+${songData.songs.length - 3} more songs</p>` : ''}
         </div>
         ` : ''}
@@ -427,8 +427,6 @@ export function updateExplorerForKey(newKey) {
       console.error(`[progressionExplorer] Failed to render theory panel for key "${newKey}":`, e);
     }
   }
-  // Re-setup hover listeners after DOM update to ensure proper event delegation
-  setupPopupChordHoverListeners();
 }
 
 

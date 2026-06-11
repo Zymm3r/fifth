@@ -5,6 +5,7 @@
  */
 
 import { CHROMATIC_SHARP } from './noteConstants.js';
+import { getChordFingering } from './chordLookup.js';
 
 /**
  * Standard guitar tuning MIDI notes (strings 6→1 = low E → high E).
@@ -48,11 +49,7 @@ function midiToNote(midi) {
  * @returns {string[]|null} Array of 6 fret strings, or null if not found
  */
 function getFingering(chordName) {
-  if (!window.__getChordFingering) {
-    console.warn(`[guitarAudio] Chord fingering lookup not available — progressionExplorer may not be initialized`);
-    return null;
-  }
-  const fingering = window.__getChordFingering(chordName);
+  const fingering = getChordFingering(chordName);
   if (!fingering) {
     console.debug(`[guitarAudio] No fingering data for chord: "${chordName}"`);
   }
