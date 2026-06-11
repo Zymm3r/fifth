@@ -120,6 +120,42 @@ const SONG_EXAMPLES = [
       { title: "ทะเลใจ", artist: "ไมโคร (Micro)", year: 1987, genre: "Thai Pop" },
       { title: "กว่าจะรู้", artist: "Crescendo (เครสเซนโด้)", year: 1994, genre: "Thai Pop Rock" }
     ]
+  },
+  {
+    progressionId: "ii7-V9-Imaj7-vi7",
+    keyExample: "C",
+    songs: [
+      { title: "What You Won't Do for Love", artist: "Bobby Caldwell", year: 1978, album: "Bobby Caldwell", genre: "R&B / Smooth Jazz" },
+      // 🇹🇭 Thai Songs
+      { title: "รักคุณเข้าแล้ว", artist: "Boyd Kosiyabong feat. Thanachai Ujjin", year: 1995, album: "Rhythm & Boyd", genre: "Thai Pop / R&B" }
+    ]
+  },
+  {
+    progressionId: "im7-im6-bVImaj7-V+",
+    keyExample: "Cm",
+    songs: [
+      { title: "My Funny Valentine", artist: "Chet Baker", year: 1954, album: "Chet Baker Sings", genre: "Cool Jazz" },
+      // 🇹🇭 Thai Songs
+      { title: "ภาวนา", artist: "Koh Mr. Saxman", year: 2002, album: "Mr. Saxman", genre: "Smooth Jazz / Pop" }
+    ]
+  },
+  {
+    progressionId: "Imaj7-bVII9-bVImaj7-V7",
+    keyExample: "Eb",
+    songs: [
+      { title: "Waterfalls", artist: "TLC", year: 1995, album: "CrazySexyCool", genre: "R&B / Soul" },
+      // 🇹🇭 Thai Songs
+      { title: "ฝนตกไหม", artist: "Three Man Down", year: 2019, album: "This City Won't Be Lonely Anymore", genre: "Indie Pop" }
+    ]
+  },
+  {
+    progressionId: "I-Isus-I+-vi",
+    keyExample: "F",
+    songs: [
+      { title: "Life on Mars?", artist: "David Bowie", year: 1971, album: "Hunky Dory", genre: "Art Rock" },
+      // 🇹🇭 Thai Songs
+      { title: "ผิดที่ไว้ใจ", artist: "Silly Fools", year: 2003, album: "Juicy", genre: "Alternative Rock" }
+    ]
   }
 ];
 
