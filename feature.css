@@ -513,3 +513,25 @@
 .barre-diagram__visual:hover {
   transform: scale(1.05);
 }
+
+.song-example--hidden {
+  display: none;
+}
+
+.song-list__more-btn {
+  background: none;
+  border: none;
+  color: #d28c38;
+  font-size: 0.85rem;
+  font-weight: bold;
+  cursor: pointer;
+  padding: 0.5rem 0 0 0;
+  text-decoration: underline;
+  width: 100%;
+  text-align: left;
+  font-family: inherit;
+}
+
+.song-list__more-btn:hover {
+  color: #a86b2b;
+}

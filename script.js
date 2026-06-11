@@ -117,12 +117,13 @@ function playChordWithDebounce(chordName) {
   }, 120);
 }
 
-// Event delegation for hover-to-play on diatonic chords (#chordList)
-document.addEventListener('mouseenter', async (e) => {
+// Event delegation for click-to-play on diatonic chords (#chordList)
+document.addEventListener('click', async (e) => {
+  if (!e.target || typeof e.target.closest !== 'function') return;
   const chordDiv = e.target.closest('#chordList .chord');
   if (!chordDiv) return;
 
-  // Initialize audio on first hover (user gesture)
+  // Initialize audio on first click (user gesture — AudioContext allowed)
   await initAudioOnInteraction();
 
   // Extract chord name from the bold text
