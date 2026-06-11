@@ -120,7 +120,7 @@ function renderProgressions(key) {
       </button>
     `).join('');
 
-    const songItems = songData?.songs?.slice(0, 3).map(s => `
+    const songItems = songData?.songs?.slice(0, 8).map(s => `
       <li class="song-example" title="${s.album ? `Album: ${escapeAttr(s.album)}` : ''}">
         <span class="song-title">${escapeAttr(s.title)}</span>
         <span class="song-artist">${escapeAttr(s.artist)}</span>
@@ -147,7 +147,7 @@ function renderProgressions(key) {
         <div class="progression-card__songs">
           <p class="progression-card__songs-title">🎵 Song Examples</p>
           <ul class="song-list">${songItems}</ul>
-          ${songData?.songs?.length > 3 ? `<p class="song-list__more">+${songData.songs.length - 3} more songs</p>` : ''}
+          ${songData?.songs?.length > 8 ? `<p class="song-list__more">+${songData.songs.length - 8} more songs</p>` : ''}
         </div>
         ` : ''}
       </article>

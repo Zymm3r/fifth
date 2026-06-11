@@ -114,6 +114,21 @@
   padding: 0;
   margin: 0;
   font-size: 0.85rem;
+  max-height: 180px;
+  overflow-y: auto;
+  padding-right: 5px;
+}
+
+.song-list::-webkit-scrollbar {
+  width: 4px;
+}
+.song-list::-webkit-scrollbar-track {
+  background: rgba(0,0,0,0.05);
+  border-radius: 4px;
+}
+.song-list::-webkit-scrollbar-thumb {
+  background: #d8b86e;
+  border-radius: 4px;
 }
 
 .song-example {
