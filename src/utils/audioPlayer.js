@@ -1,19 +1,66 @@
 /**
  * @fileoverview Audio Engine using Tone.js
- * Implements realistic guitar chord playback using Tone.PluckSynth and limits output to prevent clipping.
+ * Primary: Tone.Sampler with real acoustic guitar samples from nbrosowsky/tonejs-instruments.
+ * Fallback: Tone.PluckSynth if samples fail to load.
+ *
+ * Public API (unchanged):
+ *   initializeAudio()
+ *   playGuitarChord(chordName, chordDict, direction, time)
+ *   playProgression(chords)
+ *   stopProgression()
  */
 
-// We assume Tone is available globally via CDN.
+// ── State ──────────────────────────────────────────────────────
 let isAudioInitialized = false;
 let initPromise = null;
 
-// 6 synths for 6 strings
-let synths = [];
+/** @type {Tone.Sampler|null} */
+let sampler = null;
+
+/** @type {boolean} true when the Sampler loaded OK */
+let samplerReady = false;
+
+// Fallback PluckSynth instances (6 strings)
+let fallbackSynths = [];
+
+/** @type {Tone.Limiter|null} */
 let limiter = null;
+/** @type {Tone.Volume|null} */
 let outputGain = null;
 
+// ── Sample URL config ──────────────────────────────────────────
+const SAMPLE_BASE_URL =
+  'https://raw.githubusercontent.com/nbrosowsky/tonejs-instruments/master/samples/guitar-acoustic/';
+
 /**
- * Initialize Tone.js audio engine as a singleton.
+ * We load a sparse set of samples across the guitar range (E2–E5).
+ * Tone.Sampler pitch-shifts between them automatically.
+ * Using every-other semitone keeps load time under ~2 s on broadband.
+ */
+const SAMPLE_MAP = {
+  'E2':  'E2.mp3',
+  'A2':  'A2.mp3',
+  'D3':  'D3.mp3',
+  'G3':  'G3.mp3',
+  'B3':  'B3.mp3',
+  'E4':  'E4.mp3',
+  // Extra samples for better quality in common ranges
+  'F#2': 'Fs2.mp3',
+  'C3':  'C3.mp3',
+  'F3':  'F3.mp3',
+  'A3':  'A3.mp3',
+  'C4':  'C4.mp3',
+  'A4':  'A4.mp3',
+};
+
+// ── Standard tuning ────────────────────────────────────────────
+const STANDARD_TUNING = [40, 45, 50, 55, 59, 64]; // E2, A2, D3, G3, B3, E4
+
+// ── Initialization ─────────────────────────────────────────────
+
+/**
+ * Initialize Tone.js audio engine (singleton, idempotent).
+ * Loads acoustic-guitar samples; falls back to PluckSynth on failure.
  * @returns {Promise<void>}
  */
 export async function initializeAudio() {
@@ -22,14 +69,39 @@ export async function initializeAudio() {
 
   initPromise = (async () => {
     try {
-      // Must await Tone.start() on user interaction
       await Tone.start();
-      
-      // Setup audio graph
-      limiter = new Tone.Limiter(-2).toDestination();
-      outputGain = new Tone.Volume(-10).connect(limiter);
 
-      // Initialize 6 PluckSynths (one per string)
+      // Audio graph: instrument → gain → limiter → speakers
+      limiter = new Tone.Limiter(-2).toDestination();
+      outputGain = new Tone.Volume(-6).connect(limiter);
+
+      // ── Try loading the Sampler ──
+      try {
+        sampler = new Tone.Sampler({
+          urls: SAMPLE_MAP,
+          baseUrl: SAMPLE_BASE_URL,
+          release: 1.5,
+          onload: () => {
+            samplerReady = true;
+            console.log('[audioPlayer] ✓ Acoustic guitar samples loaded.');
+          },
+          onerror: (err) => {
+            console.warn('[audioPlayer] Sample load error, using PluckSynth fallback:', err);
+            samplerReady = false;
+          },
+        }).connect(outputGain);
+
+        // Wait up to 8 s for samples to load
+        await Promise.race([
+          Tone.loaded(),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 8000)),
+        ]);
+      } catch (loadErr) {
+        console.warn('[audioPlayer] Sampler loading failed/timed-out, using PluckSynth fallback:', loadErr);
+        samplerReady = false;
+      }
+
+      // ── Always create the fallback PluckSynths ──
       for (let i = 0; i < 6; i++) {
         const synth = new Tone.PluckSynth({
           attackNoise: 1,
@@ -37,68 +109,55 @@ export async function initializeAudio() {
           resonance: 0.9,
           release: 1.5,
         }).connect(outputGain);
-        synths.push(synth);
+        fallbackSynths.push(synth);
       }
 
       isAudioInitialized = true;
-      console.log("[audioPlayer] Audio engine initialized successfully.");
+      console.log(`[audioPlayer] Audio engine ready (mode: ${samplerReady ? 'Sampler' : 'PluckSynth'}).`);
     } catch (e) {
-      console.error("[audioPlayer] Failed to initialize audio engine:", e);
-      initPromise = null; // Reset so we can try again
+      console.error('[audioPlayer] Fatal init error:', e);
+      initPromise = null;
     }
   })();
 
   return initPromise;
 }
 
-// Standard tuning MIDI mapping: E2, A2, D3, G3, B3, E4
-const STANDARD_TUNING = [40, 45, 50, 55, 59, 64];
+// ── MIDI helpers ───────────────────────────────────────────────
 
 /**
- * Get MIDI notes for a given chord dictionary fingering array.
- * @param {string} chordName 
- * @param {string[]} fretPositions Array of 6 frets, e.g., ["X", "3", "2", "0", "1", "0"]
- * @returns {number[]} Array of MIDI notes to play
+ * Convert a fingering array + chord name into an array of { stringIndex, midiNote }.
+ * Handles slash chords (e.g. C/G).
  */
 function getMidiNotesForFingering(chordName, fretPositions) {
-  let notes = [];
+  const notes = [];
   let lowestPlayedIndex = -1;
 
   for (let i = 0; i < 6; i++) {
     const fret = fretPositions[i];
-    if (fret !== "X") {
+    if (fret !== 'X') {
       const midiNote = STANDARD_TUNING[i] + parseInt(fret, 10);
       notes.push({ stringIndex: i, midiNote });
-      if (lowestPlayedIndex === -1) {
-        lowestPlayedIndex = i;
-      }
+      if (lowestPlayedIndex === -1) lowestPlayedIndex = i;
     }
   }
 
-  // Handle slash chords dynamically (e.g. C/G)
+  // Slash-chord bass override
   if (chordName.includes('/')) {
     const parts = chordName.split('/');
     if (parts.length === 2 && lowestPlayedIndex !== -1) {
       const bassNoteName = parts[1];
-      // Convert bass note to a rough bass MIDI frequency
-      // Let's find the nearest MIDI note around octave 2 or 3 for the bass
       const noteMap = {
         'C': 0, 'C#': 1, 'Db': 1, 'D': 2, 'D#': 3, 'Eb': 3,
         'E': 4, 'F': 5, 'F#': 6, 'Gb': 6, 'G': 7, 'G#': 8, 'Ab': 8,
-        'A': 9, 'A#': 10, 'Bb': 10, 'B': 11
+        'A': 9, 'A#': 10, 'Bb': 10, 'B': 11,
       };
-      
       const pc = noteMap[bassNoteName];
       if (pc !== undefined) {
-        // E2 is 40. We want a bass note between E2 (40) and D#3 (51).
-        let bassMidi = 36 + pc; // C2 is 36
-        if (bassMidi < 40) bassMidi += 12; // Bring up to at least E2 range (40+)
-        
-        // Replace the lowest played string's note with this calculated bass note
-        const lowestNoteObj = notes.find(n => n.stringIndex === lowestPlayedIndex);
-        if (lowestNoteObj) {
-          lowestNoteObj.midiNote = bassMidi;
-        }
+        let bassMidi = 36 + pc; // C2 = 36
+        if (bassMidi < 40) bassMidi += 12;
+        const low = notes.find(n => n.stringIndex === lowestPlayedIndex);
+        if (low) low.midiNote = bassMidi;
       }
     }
   }
@@ -107,89 +166,91 @@ function getMidiNotesForFingering(chordName, fretPositions) {
 }
 
 /**
- * Play a guitar chord by strumming the strings.
- * @param {string} chordName The name of the chord.
- * @param {string[]} chordDict Array of 6 frets.
- * @param {string} direction 'down' or 'up'
- * @param {number} time Tone.js scheduling time (optional)
+ * Convert MIDI number to scientific pitch (e.g. 40 → "E2").
+ */
+function midiToNoteName(midi) {
+  const names = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+  const oct = Math.floor(midi / 12) - 1;
+  return names[midi % 12] + oct;
+}
+
+// ── Playback ───────────────────────────────────────────────────
+
+/**
+ * Play a guitar chord by strumming strings.
+ * @param {string}   chordName  Chord label (e.g. "Am", "C/G")
+ * @param {string[]} chordDict  6-element fret array ["X","0","2","2","1","0"]
+ * @param {string}   direction  'down' (6→1) or 'up' (1→6)
+ * @param {number}   [time]     Tone.js transport time; defaults to Tone.now()
  */
 export function playGuitarChord(chordName, chordDict, direction = 'down', time = undefined) {
   if (!isAudioInitialized) {
-    console.warn("[audioPlayer] Audio not initialized. Call initializeAudio() first.");
+    console.warn('[audioPlayer] Not initialised yet.');
     return;
   }
-
   if (!chordDict || chordDict.length !== 6) return;
 
   const notesToPlay = getMidiNotesForFingering(chordName, chordDict);
   if (notesToPlay.length === 0) return;
 
-  // For downstroke, play lowest pitch first. For upstroke, highest pitch first.
-  if (direction === 'up') {
-    notesToPlay.reverse();
-  }
+  if (direction === 'up') notesToPlay.reverse();
 
   const startTime = time !== undefined ? time : Tone.now();
-  const strumDelay = 0.03; // 30ms
+  const strumDelay = 0.03; // 30 ms per string
 
   notesToPlay.forEach((noteData, index) => {
-    // Determine frequency
-    const freq = Tone.Frequency(noteData.midiNote, "midi").toFrequency();
-    const synth = synths[noteData.stringIndex];
-    
-    // Trigger the synth
-    synth.triggerAttackRelease(freq, "+1.5", startTime + (index * strumDelay));
+    const noteTime = startTime + index * strumDelay;
+
+    if (samplerReady && sampler) {
+      // ── Sampler path (realistic) ──
+      const noteName = midiToNoteName(noteData.midiNote);
+      sampler.triggerAttackRelease(noteName, '2n', noteTime);
+    } else {
+      // ── PluckSynth fallback ──
+      const freq = Tone.Frequency(noteData.midiNote, 'midi').toFrequency();
+      const synth = fallbackSynths[noteData.stringIndex];
+      if (synth) synth.triggerAttackRelease(freq, '+1.5', noteTime);
+    }
   });
 }
 
-// Progression playback state
+// ── Progression playback (Transport-based) ─────────────────────
 let currentProgressionEvents = [];
 
 /**
- * Play a progression of chords sequentially using Tone.Transport.
- * @param {Array<{chordName: string, strings: string[]}>} chords Array of chord objects
+ * Play a chord progression using Tone.Transport at 100 BPM.
+ * @param {Array<{chordName: string, strings: string[]}>} chords
  */
 export function playProgression(chords) {
   if (!isAudioInitialized) return;
 
-  stopProgression(); // Clear any existing playing progression
+  stopProgression();
 
-  const bps = 100 / 60; // 100 BPM
-  const barDuration = 4 / bps; // 4/4 time, 1 bar per chord = 4 beats
-  
-  // Set Transport BPM
   Tone.Transport.bpm.value = 100;
+  const barDuration = 4 / (100 / 60); // 4 beats at 100 BPM
 
-  // Schedule each chord
   chords.forEach((chordData, index) => {
-    const startTime = index * barDuration;
-    // Downstroke on the 1st beat
     const eventId = Tone.Transport.schedule((time) => {
       playGuitarChord(chordData.chordName, chordData.strings, 'down', time);
-    }, startTime);
-    
+    }, index * barDuration);
     currentProgressionEvents.push(eventId);
   });
 
-  // Stop transport after the last chord has finished ringing
-  const stopTime = chords.length * barDuration + 2; 
-  const stopEventId = Tone.Transport.schedule((time) => {
+  // Auto-stop after last chord rings out
+  const stopId = Tone.Transport.schedule(() => {
     Tone.Transport.stop();
-  }, stopTime);
-  currentProgressionEvents.push(stopEventId);
+  }, chords.length * barDuration + 2);
+  currentProgressionEvents.push(stopId);
 
-  // Start transport
   Tone.Transport.start();
 }
 
 /**
- * Stop currently playing progression.
+ * Stop the currently playing progression and clear all scheduled events.
  */
 export function stopProgression() {
-  if (currentProgressionEvents.length > 0) {
-    currentProgressionEvents.forEach(id => Tone.Transport.clear(id));
-    currentProgressionEvents = [];
-  }
+  currentProgressionEvents.forEach(id => Tone.Transport.clear(id));
+  currentProgressionEvents = [];
   Tone.Transport.stop();
   Tone.Transport.position = 0;
 }
