@@ -10,6 +10,8 @@ import SONG_EXAMPLES from '../data/songExamples.js';
 import { getAllTransposedProgressions, transposeProgression } from '../utils/progressionTransposer.js';
 import { getRelativeKey, getParallelKey, getCircleNeighbors, getChordFunction, getScaleDegreeName, getSecondaryDominant } from '../utils/musicTheory.js';
 import { getBarreChordInfo } from '../data/barreChords.js';
+import { initializeAudio, playGuitarChord, playProgression, stopProgression } from '../utils/audioPlayer.js';
+
 import { ensureAudioStarted, playChordStrum, stopAllNotes } from '../utils/guitarAudio.js';
 import { getChordFingering } from '../utils/chordLookup.js';
 import { ENHARMONIC_MAP } from '../utils/noteConstants.js';
@@ -24,11 +26,29 @@ function escapeAttr(str) {
   return String(str).replace(/&/g, '&amp;').replace(/'/g, '&#39;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
+/**
+ * Safe wrapper for Element.closest() that handles TextNodes and missing methods.
+ * @param {EventTarget} target 
+ * @param {string} selector 
+ * @returns {Element|null}
+ */
+function safeClosest(target, selector) {
+  if (!target) return null;
+  let el = target.nodeType === 3 ? target.parentElement : target;
+  if (!el || typeof el.closest !== 'function') return null;
+  return el.closest(selector);
+}
+
+
 /** @type {string|null} Currently focused chord for accessibility */
 let focusedChordId = null;
 
 /** @type {string} Current active key */
 let currentKey = 'C';
+
+// Unlock audio on first user interaction
+document.addEventListener('pointerdown', initializeAudio, { once: true });
+
 
 /**
  * Initialize the progression explorer panel.
@@ -119,6 +139,7 @@ function renderProgressions(key) {
         <div class="progression-card__header">
           <span class="progression-card__badge progression-card__badge--${progression.style.toLowerCase().replace(/[^a-z]/g, '')}">${progression.style}</span>
           <h4 class="progression-card__name">${progression.name}</h4>
+          <button class="play-progression-btn" data-progression-id="${escapeAttr(progression.id)}" aria-label="Play progression">▶ Play</button>
           <span class="progression-card__quality">${progression.quality}</span>
         </div>
 
@@ -221,6 +242,7 @@ export function showChordDetail(chordName, romanNumeral, key) {
     <div class="chord-detail">
       <div class="chord-detail__header">
         <h2 id="chordModalTitle" class="chord-detail__name">${chordName}${enharmonicText}</h2>
+        <button id="modalPlayChordBtn" class="play-chord-btn" aria-label="Play chord ${chordName}">🔊 Play</button>
         <span class="chord-detail__roman">${romanNumeral}</span>
         <span class="chord-detail__function chord-detail__function--${function_}">${function_.charAt(0).toUpperCase() + function_.slice(1)}</span>
       </div>
@@ -522,29 +544,11 @@ export function initKeyboardNavigation() {
     }
   });
 }
-/**
- * Resolve a chord name to its fingering array, checking the dict and enharmonic aliases.
- * Exposed globally so guitarAudio.js can access it.
- */
-function getChordFingeringInternal(chordName) {
-  let strings = CHORD_DICT[chordName];
-
-  if (!strings) {
-    const alias = ENHARMONIC_CHORD_ALIASES[chordName];
-    strings = alias ? CHORD_DICT[alias] : null;
-  }
-
-  return strings || null;
-}
-
-// Expose chord detail function globally
-window.__showChordDetail = showChordDetail;
-
 // Expose chord fingering lookup for guitarAudio.js using a different internal name
-window.__getChordFingering = getChordFingeringInternal;
+
 // Event delegation for chord buttons (avoids inline onclick blocked by CSP)
 document.addEventListener('click', (e) => {
-  const btn = e.target.closest('.progression-chord-btn, .related-chord-btn');
+  const btn = safeClosest(e.target, '.progression-chord-btn, .related-chord-btn');
   if (!btn) return;
   const chord = btn.getAttribute('data-chord');
   const roman = btn.getAttribute('data-roman');
@@ -554,96 +558,3 @@ document.addEventListener('click', (e) => {
   }
 });
 
-// --- Guitar Audio Popup Hover ---
-
-/** @type {boolean} Whether popup audio initialization has been attempted */
-let popupAudioInitDone = false;
-
-/**
- * Initialize audio on first user interaction for popup.
- */
-async function onPopupFirstInteraction() {
-  if (popupAudioInitDone) return;
-  popupAudioInitDone = true;
-  try {
-    if (typeof ensureAudioStarted === 'function') {
-      await ensureAudioStarted();
-    }
-  } catch (e) {
-    console.warn('Failed to initialize audio on popup first interaction:', e);
-  }
-}
-
-/** @type {function|null} Stored mouseenter handler for popup cleanup */
-let popupChordHoverHandler = null;
-
-/** @type {function|null} Stored mouseleave handler for popup cleanup */
-let popupChordLeaveHandler = null;
-
-/**
- * Set up audio hover event listeners for the popup play button (#playChordBtn).
- * @returns {void}
- */
-export function setupPopupChordHoverListeners() {
-  // ลบ Listener เก่าออกก่อนเพื่อป้องกันเสียงซ้อน
-  if (popupChordHoverHandler) {
-    document.removeEventListener('mouseenter', popupChordHoverHandler, true);
-  }
-  if (popupChordLeaveHandler) {
-    document.removeEventListener('mouseleave', popupChordLeaveHandler, true);
-  }
-
-  // Create the mouseenter handler
-  popupChordHoverHandler = async (e) => {
-    // Find the closest chord button from the hover target
-    const btn = e.target.closest('.progression-chord-btn');
-    if (!btn) return;
-
-    // เปิดระบบเสียงในจังหวะเริ่มโฮเวอร์
-    await onPopupFirstInteraction();
-
-    // 1. ดึงชื่อคอร์ดจาก data-chord ของปุ่มก่อน
-    let chordName = btn.getAttribute('data-chord');
-    
-    // 2. ถ้าที่ปุ่มไม่มี ให้วิ่งไปหาจากตัวกล่องพ็อพพัพ (#chordPopup) หรือข้อความหัวคอร์ดแทน
-    if (!chordName) {
-      const popup = document.getElementById('chordPopup');
-      chordName = popup?.getAttribute('data-chord') 
-               || popup?.querySelector('h3, .popup-title, .chord-title')?.textContent?.trim();
-    }
-
-    // สั่งเล่นเสียงสตรัมกีตาร์
-    if (chordName && typeof playChordStrum === 'function') {
-      playChordStrum(chordName);
-    }
-  };
-
-  // Create the mouseleave handler
-  popupChordLeaveHandler = (e) => {
-    const btn = e.target.closest('.progression-chord-btn');
-    if (!btn) return;
-    // ปล่อยให้เสียงกังวานจบเองตามธรรมชาติ
-  };
-
-  // ลงทะเบียน Event เข้าสู่ระบบแบบ Capture Phase ตามโครงสร้างเดิมของคุณ
-  document.addEventListener('mouseenter', popupChordHoverHandler, true);
-  document.addEventListener('mouseleave', popupChordLeaveHandler, true);
-}
-
-/**
- * Clean up popup hover event listeners to prevent memory leaks.
- * @returns {void}
- */
-export function cleanupPopupChordHoverListeners() {
-  if (popupChordHoverHandler) {
-    document.removeEventListener('mouseenter', popupChordHoverHandler, true);
-    popupChordHoverHandler = null;
-  }
-  if (popupChordLeaveHandler) {
-    document.removeEventListener('mouseleave', popupChordLeaveHandler, true);
-    popupChordLeaveHandler = null;
-  }
-}
-
-// เปิดรันระบบดักจับทันทีเมื่อโหลดโมดูล
-setupPopupChordHoverListeners();

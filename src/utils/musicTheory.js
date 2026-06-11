@@ -173,7 +173,7 @@ function getScaleDegreeName(romanNumeral) {
   const name = names[clean];
   if (!name) {
     console.debug(`[musicTheory] No scale degree name for Roman numeral: "${romanNumeral}" (cleaned: "${clean}")`);
-    return 'Unknown';
+    return '';
   }
   return isFlat ? `${name} (♭)` : name;
 }
